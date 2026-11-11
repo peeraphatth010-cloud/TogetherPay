@@ -263,25 +263,25 @@ export function App() {
   }[] = [
     {
       id: 'shared',
-      label: '1. ร่วมกัน',
+      label: 'ร่วมกัน',
       shortLabel: 'ร่วมกัน',
       icon: <Users className="w-4 h-4" />,
     },
     {
       id: 'personal',
-      label: '2. ส่วนตัว',
+      label: 'ส่วนตัว',
       shortLabel: 'ส่วนตัว',
       icon: <User className="w-4 h-4" />,
     },
     {
       id: 'monthly',
-      label: '3. รายเดือน',
+      label: 'รายเดือน',
       shortLabel: 'รายเดือน',
       icon: <CheckSquare className="w-4 h-4" />,
     },
     {
       id: 'dashboard',
-      label: '4. Dashboard',
+      label: 'Dashboard',
       shortLabel: 'สรุปยอด',
       icon: <BarChart3 className="w-4 h-4" />,
     },

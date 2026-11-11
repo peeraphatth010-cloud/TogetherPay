@@ -18,6 +18,7 @@ import {
   THAI_MONTHS,
 } from '../types';
 import { formatCurrency } from '../utils/calculations';
+import { ThaiDatePicker, formatThaiDate } from './ThaiDateInput';
 
 interface ModulePersonalExpensesProps {
   expenses: PersonalExpense[];
@@ -56,7 +57,6 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
 
   const amountInputRef = useRef<HTMLInputElement>(null);
 
-  // กดปุ่ม "เพิ่มค่าใช้จ่าย" -> เลือกวันที่เป็น "วันนี้เสมอ" อัตโนมัติ และโฟกัสช่องกรอกเงิน
   const handleStartAddExpense = () => {
     const todayStr = getTodayISOString();
     setDate(todayStr);
@@ -70,9 +70,9 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
     const numericAmount = parseFloat(amount);
     if (!title.trim() || isNaN(numericAmount) || numericAmount <= 0) return;
 
-    const parsedDate = new Date(date);
-    const expMonth = !isNaN(parsedDate.getTime()) ? parsedDate.getMonth() + 1 : currentMonth;
-    const expYear = !isNaN(parsedDate.getTime()) ? parsedDate.getFullYear() : currentYear;
+    const parts = date.split('-');
+    const expYear = parseInt(parts[0], 10) || currentYear;
+    const expMonth = parseInt(parts[1], 10) || currentMonth;
 
     setIsSubmitting(true);
     try {
@@ -86,7 +86,6 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
         year: expYear,
       });
 
-      // Reset form & set date back to today automatically
       setAmount('');
       setTitle('');
       setDate(getTodayISOString());
@@ -109,32 +108,32 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
   const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header Bar with Person Switcher & "+ เพิ่มค่าใช้จ่าย" Button */}
-      <div className="bento-card p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
+      <div className="bento-card p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           <div
-            className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center shadow-md ${
+            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl text-white flex items-center justify-center shadow-md shrink-0 ${
               selectedPerson === 'nurse'
                 ? 'bg-rose-500 shadow-rose-500/20'
                 : 'bg-blue-600 shadow-blue-600/20'
             }`}
           >
-            <User className="w-6 h-6" />
+            <User className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900">
-              โมดูล 2 : ค่าใช้จ่ายส่วนตัว ({activePersonInfo.name})
+            <h2 className="text-base sm:text-xl font-extrabold text-slate-900">
+              ค่าใช้จ่ายส่วนตัว ({activePersonInfo.name})
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500">
               บันทึกค่าใช้จ่ายเฉพาะของใครของมัน แยกกระเป๋าส่วนตัวชัดเจน
             </p>
           </div>
         </div>
 
         {/* Person Selector (เนิร์ส / พี) + ปุ่มเพิ่มค่าใช้จ่าย */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-slate-100 p-1.5 rounded-2xl flex items-center gap-1 border border-slate-200">
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2">
+          <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200">
             {(['nurse', 'pee'] as PersonId[]).map((pid) => {
               const p = PERSON_INFO[pid];
               const isSelected = selectedPerson === pid;
@@ -143,7 +142,7 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
                   key={pid}
                   type="button"
                   onClick={() => setSelectedPerson(pid)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isSelected
                       ? pid === 'nurse'
                         ? 'bg-rose-500 text-white shadow-xs'
@@ -161,7 +160,7 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
           <button
             type="button"
             onClick={handleStartAddExpense}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-sm shadow-sm transition cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs sm:text-sm shadow-sm transition cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             เพิ่มค่าใช้จ่าย (วันนี้)
@@ -169,34 +168,34 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
         </div>
       </div>
 
-      {/* Asymmetric 2-Column Bento Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* Main 2-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left Column (5 cols): Form */}
         <form
           onSubmit={handleSubmit}
-          className={`lg:col-span-5 bento-card p-6 sm:p-7 space-y-5 transition-all ${
+          className={`lg:col-span-5 bento-card p-5 sm:p-6 space-y-4 transition-all ${
             isFormHighlighted ? 'ring-4 ring-blue-500/30 scale-[1.01]' : ''
           }`}
         >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
               <span
                 className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full border ${activePersonInfo.badgeBg} ${activePersonInfo.badgeText}`}
               >
                 {activePersonInfo.avatar} กระเป๋าส่วนตัวของ{activePersonInfo.name}
               </span>
-              <h3 className="text-lg font-extrabold text-slate-900 mt-1.5">
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 mt-1.5">
                 + บันทึกค่าใช้จ่ายส่วนตัว
               </h3>
             </div>
-            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-lg">
+            <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-base">
               {activePersonInfo.avatar}
             </div>
           </div>
 
-          {/* เลือกคนในฟอร์มได้ด้วย */}
+          {/* เลือกคนในฟอร์ม */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
               บันทึกเป็นของใคร
             </label>
             <div className="grid grid-cols-2 gap-2.5">
@@ -208,7 +207,7 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
                     key={pid}
                     type="button"
                     onClick={() => setSelectedPerson(pid)}
-                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border text-sm font-bold transition cursor-pointer ${
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border text-xs sm:text-sm font-bold transition cursor-pointer ${
                       active
                         ? pid === 'nurse'
                           ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
@@ -225,32 +224,26 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
             </div>
           </div>
 
-          {/* วันที่ (เลือกได้ แต่กดเพิ่มให้เลือกอัตโนมัติเองก่อนว่าวันนี้เสมอ) */}
+          {/* วันที่ (เรียง วันที่ -> เดือน -> ปี พ.ศ. ไม่เอา ค.ศ.) */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                วันที่ใช้จ่าย *
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-slate-700">
+                วันที่ใช้จ่าย (วัน / เดือน / ปี พ.ศ.) *
               </label>
               <button
                 type="button"
                 onClick={() => setDate(getTodayISOString())}
                 className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
               >
-                ตั้งเป็นวันนี้ ({getTodayISOString()})
+                วันนี้ ({formatThaiDate(getTodayISOString())})
               </button>
             </div>
-            <input
-              type="date"
-              required
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white text-sm font-bold text-slate-900 outline-none transition"
-            />
+            <ThaiDatePicker value={date} onChange={setDate} />
           </div>
 
           {/* จำนวนเงิน (บาท) */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               จำนวนเงิน (บาท) *
             </label>
             <div className="relative">
@@ -264,9 +257,9 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white text-2xl font-extrabold text-slate-900 outline-none transition"
+                className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white text-2xl font-extrabold text-slate-900 outline-none transition"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
                 บาท
               </span>
             </div>
@@ -274,7 +267,7 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
 
           {/* รายการ ชื่อ */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               ชื่อรายการ *
             </label>
             <input
@@ -283,16 +276,16 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
               placeholder="เช่น กาแฟตอนเช้า, ช้อปปิ้งออนไลน์, เติมน้ำมันรถตัวเอง"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white text-sm font-semibold text-slate-900 outline-none transition"
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white text-sm font-semibold text-slate-900 outline-none transition"
             />
           </div>
 
-          {/* ปุ่มเลือกหมวด (น้ำมัน, อาหาร, ที่พัก, ช้อปปิ้ง, ท่องเที่ยว) */}
+          {/* ปุ่มเลือกหมวด */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
               เลือกหมวดหมู่
             </label>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-1.5">
               {CATEGORIES.map((cat) => {
                 const isSelected = category === cat.id;
                 return (
@@ -300,16 +293,16 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
                     key={cat.id}
                     type="button"
                     onClick={() => setCategory(cat.id)}
-                    className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-2xl border text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex flex-col items-center justify-center py-2 px-1 rounded-2xl border text-[11px] font-bold transition-all cursor-pointer ${
                       isSelected
                         ? selectedPerson === 'nurse'
-                          ? 'bg-rose-500 text-white border-rose-500 shadow-md shadow-rose-500/20'
-                          : 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20'
+                          ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
+                          : 'bg-blue-600 text-white border-blue-600 shadow-sm'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className="text-lg mb-0.5">{cat.emoji}</span>
-                    <span>{cat.label}</span>
+                    <span className="text-base">{cat.emoji}</span>
+                    <span className="mt-0.5 truncate">{cat.label}</span>
                   </button>
                 );
               })}
@@ -319,7 +312,7 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full py-4 px-6 rounded-2xl text-white font-extrabold text-sm shadow-lg flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 ${
+            className={`w-full py-3.5 px-5 rounded-2xl text-white font-extrabold text-sm shadow-lg flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 ${
               selectedPerson === 'nurse'
                 ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25'
                 : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/25'
@@ -333,31 +326,30 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
         </form>
 
         {/* Right Column (7 cols): Personal Summary & History */}
-        <div className="lg:col-span-7 space-y-5">
-          {/* Summary Banner + Month Filter */}
-          <div className="bento-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
+        <div className="lg:col-span-7 space-y-4">
+          <div className="bento-card p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3.5">
               <div
-                className={`w-14 h-14 rounded-3xl flex items-center justify-center text-2xl border ${activePersonInfo.badgeBg}`}
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center border shrink-0 ${activePersonInfo.badgeBg}`}
               >
-                <Wallet className={`w-7 h-7 ${activePersonInfo.badgeText}`} />
+                <Wallet className={`w-6 h-6 ${activePersonInfo.badgeText}`} />
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-500">
                   รวมค่าใช้จ่ายส่วนตัวของ{activePersonInfo.name}
                 </p>
-                <p className="text-3xl font-extrabold text-slate-900 mt-0.5">
+                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-0.5">
                   ฿{formatCurrency(totalPersonalMonth)}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  เดือน{THAI_MONTHS.find((m) => m.value === filterMonth)?.label}{' '}
+                  เดือน{THAI_MONTHS.find((m) => m.value === filterMonth)?.label} พ.ศ.{' '}
                   {filterYear + 543} ({personExpenses.length} รายการ)
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-2 rounded-2xl border border-slate-200">
+              <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200">
                 <Filter className="w-3.5 h-3.5 text-slate-500" />
                 <select
                   value={filterMonth}
@@ -371,7 +363,7 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
                   ))}
                 </select>
               </div>
-              <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-2 rounded-2xl border border-slate-200">
+              <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200">
                 <Calendar className="w-3.5 h-3.5 text-slate-500" />
                 <select
                   value={filterYear}
@@ -380,7 +372,7 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
                 >
                   {yearOptions.map((y) => (
                     <option key={y} value={y}>
-                      {y + 543}
+                      พ.ศ. {y + 543}
                     </option>
                   ))}
                 </select>
@@ -388,67 +380,62 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
             </div>
           </div>
 
-          {/* List of Personal Expenses */}
-          <div className="bento-card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-extrabold text-slate-900">
+          <div className="bento-card p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3.5">
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
                 รายการส่วนตัวของ{activePersonInfo.name}
               </h3>
               <span
-                className={`px-3 py-1 rounded-full text-xs font-bold border ${activePersonInfo.badgeBg} ${activePersonInfo.badgeText}`}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold border ${activePersonInfo.badgeBg} ${activePersonInfo.badgeText}`}
               >
                 {personExpenses.length} รายการ
               </span>
             </div>
 
             {personExpenses.length === 0 ? (
-              <div className="text-center py-12 px-4 rounded-3xl bg-slate-50/70 border border-dashed border-slate-200">
-                <Sparkles className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-                <p className="text-base font-bold text-slate-700">
+              <div className="text-center py-10 px-4 rounded-2xl bg-slate-50/70 border border-dashed border-slate-200">
+                <Sparkles className="w-8 h-8 text-slate-400 mx-auto mb-1.5" />
+                <p className="text-sm font-bold text-slate-700">
                   ยังไม่มีรายการค่าใช้จ่ายส่วนตัวของ{activePersonInfo.name}ในเดือนนี้
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  กดปุ่ม &ldquo;เพิ่มค่าใช้จ่าย (วันนี้)&rdquo; เพื่อบันทึกรายการได้เลย
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {personExpenses.map((item) => {
                   const catObj =
                     CATEGORIES.find((c) => c.id === item.category) || CATEGORIES[0];
                   return (
                     <div
                       key={item.id}
-                      className="p-4 rounded-2xl bg-slate-50/80 hover:bg-white border border-slate-200/80 transition flex items-center justify-between gap-3"
+                      className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex items-center justify-between gap-2.5"
                     >
-                      <div className="flex items-center gap-3.5">
+                      <div className="flex items-center gap-3">
                         <div
-                          className={`w-11 h-11 rounded-2xl ${catObj.bgLight} ${catObj.textDark} border ${catObj.border} flex items-center justify-center text-lg shrink-0`}
+                          className={`w-10 h-10 rounded-2xl ${catObj.bgLight} ${catObj.textDark} border ${catObj.border} flex items-center justify-center text-lg shrink-0`}
                         >
                           {catObj.emoji}
                         </div>
                         <div>
-                          <h4 className="font-bold text-slate-900 text-sm sm:text-base">
+                          <h4 className="font-bold text-slate-900 text-sm">
                             {item.title}
                           </h4>
                           <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                            <span>📅 {item.date}</span>
+                            <span>📅 {formatThaiDate(item.date)}</span>
                             <span>• หมวด{item.category}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <span className="text-base sm:text-lg font-extrabold text-slate-900">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-base font-extrabold text-slate-900">
                           ฿{formatCurrency(item.amount)}
                         </span>
                         <button
                           type="button"
                           onClick={() => onDeleteExpense(item.id)}
-                          title="ลบรายการ"
-                          className="w-9 h-9 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white flex items-center justify-center transition cursor-pointer"
+                          className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white flex items-center justify-center cursor-pointer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>

@@ -6,7 +6,7 @@ import {
   PersonalExpense,
   SettlementRecord,
   SharedExpense,
-  CATEGORIES,
+  ALL_CATEGORIES,
 } from '../types';
 
 export interface SplitBreakdown {
@@ -167,6 +167,7 @@ export function computeDashboardAnalytics(params: {
   const sharedByCategory: Record<ExpenseCategory, number> = {
     อาหาร: 0,
     น้ำมัน: 0,
+    ค่ารถ: 0,
     ที่พัก: 0,
     ช้อปปิ้ง: 0,
     ท่องเที่ยว: 0,
@@ -175,6 +176,7 @@ export function computeDashboardAnalytics(params: {
   const peeCategoryMap: Record<ExpenseCategory, number> = {
     อาหาร: 0,
     น้ำมัน: 0,
+    ค่ารถ: 0,
     ที่พัก: 0,
     ช้อปปิ้ง: 0,
     ท่องเที่ยว: 0,
@@ -183,6 +185,7 @@ export function computeDashboardAnalytics(params: {
   const nurseCategoryMap: Record<ExpenseCategory, number> = {
     อาหาร: 0,
     น้ำมัน: 0,
+    ค่ารถ: 0,
     ที่พัก: 0,
     ช้อปปิ้ง: 0,
     ท่องเที่ยว: 0,
@@ -358,7 +361,7 @@ export function computeDashboardAnalytics(params: {
 
   const buildCategoryArray = (map: Record<ExpenseCategory, number>) => {
     const sum = Object.values(map).reduce((a, b) => a + b, 0);
-    return CATEGORIES.map((c) => {
+    return ALL_CATEGORIES.map((c) => {
       const amount = map[c.id] || 0;
       return {
         category: c.id,

@@ -15,7 +15,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import {
-  CATEGORIES,
+  ALL_CATEGORIES,
   MonthlyBill,
   MonthlyBillPayment,
   PERSON_INFO,
@@ -32,6 +32,7 @@ import {
   formatYearMonth,
   isBillActiveInYearMonth,
 } from '../utils/calculations';
+import { formatThaiDate, formatThaiYearMonth } from './ThaiDateInput';
 
 interface ModuleDashboardProps {
   sharedExpenses: SharedExpense[];
@@ -304,7 +305,7 @@ export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
               บิลรายเดือนของ{personInfo.name}
             </h3>
-            <p className="text-xs text-slate-500 mb-4">งวด {ym}</p>
+            <p className="text-xs text-slate-500 mb-4">งวด {formatThaiYearMonth(ym)}</p>
 
             {personMonthlyList.length === 0 ? (
               <div className="py-8 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-xs text-slate-500">
@@ -388,7 +389,7 @@ export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
               {combinedHistory.map((h) => {
                 const catObj =
-                  CATEGORIES.find((c) => c.id === h.category) || CATEGORIES[0];
+                  ALL_CATEGORIES.find((c) => c.id === h.category) || ALL_CATEGORIES[0];
                 return (
                   <div
                     key={h.id}
@@ -416,7 +417,7 @@ export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500 truncate">
-                          📅 {h.date} • {h.detail}
+                          📅 {formatThaiDate(h.date)} • {h.detail}
                         </p>
                         {h.locationName && (
                           <p className="text-[11px] text-blue-600 inline-flex items-center gap-1">
@@ -725,7 +726,7 @@ export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
             <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">
-              โมดูล 4 : Dashboard สรุปภาพรวม
+              Dashboard สรุปภาพรวม
             </h2>
             <p className="text-xs text-slate-500">
               เลือกดูแยกของพี ของเนิร์ส หรือภาพรวมร่วมกัน

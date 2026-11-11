@@ -16,7 +16,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import {
-  CATEGORIES,
+  MONTHLY_BILL_CATEGORIES,
   ExpenseCategory,
   MonthlyBill,
   MonthlyBillPayment,
@@ -30,6 +30,7 @@ import {
   formatYearMonth,
   isBillActiveInYearMonth,
 } from '../utils/calculations';
+import { ThaiMonthPicker, formatThaiYearMonth } from './ThaiDateInput';
 
 interface ModuleMonthlyBillsProps {
   bills: MonthlyBill[];
@@ -68,12 +69,10 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
   const [customPartnerShare, setCustomPartnerShare] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Editing monthly actual amount inline state
   const [editingBillId, setEditingBillId] = useState<string | null>(null);
   const [tempActualTotal, setTempActualTotal] = useState<string>('');
   const [tempPartnerShare, setTempPartnerShare] = useState<string>('');
 
-  // Slip preview modal
   const [previewSlip, setPreviewSlip] = useState<{
     url: string;
     title: string;
@@ -254,15 +253,14 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
             </div>
             <div>
               <h2 className="text-base sm:text-xl font-extrabold text-slate-900">
-                โมดูล 3 : บิลเรียกเก็บรายเดือน
+                ค่าใช้จ่าย เรียกเก็บรายเดือน
               </h2>
               <p className="text-xs text-slate-500">
-                เช็คลิสต์จ่ายบิล แชร์ค่าห้อง และแนบสลิปโอนเงิน
+                เช็คลิสต์จ่ายบิล แชร์ค่าห้อง/ค่ารถ และแนบสลิปโอนเงิน
               </p>
             </div>
           </div>
 
-          {/* Mobile Toggle to open Create Bill Form */}
           <button
             type="button"
             onClick={() => setShowCreateFormMobile((prev) => !prev)}
@@ -321,7 +319,7 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
             >
               {yearOptions.map((y) => (
                 <option key={y} value={y}>
-                  {y + 543}
+                  พ.ศ. {y + 543}
                 </option>
               ))}
             </select>
@@ -331,7 +329,7 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
 
       {/* Main 2-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Column (5 cols): Create Monthly Bill Form (Collapsible on Mobile so Checklist is immediately visible!) */}
+        {/* Left Column (5 cols): Create Monthly Bill Form */}
         <form
           onSubmit={handleCreateBill}
           className={`lg:col-span-5 bento-card p-5 sm:p-6 space-y-4 ${
@@ -344,7 +342,7 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                 + เพิ่มรายการเรียกเก็บรายเดือน
               </h3>
               <p className="text-xs text-slate-500">
-                ตั้งยอดขั้นต่ำและกำหนดเดือนเริ่มต้น-สิ้นสุด
+                ตั้งยอดขั้นต่ำและกำหนดเดือนเริ่มต้น-สิ้นสุด (พ.ศ.)
               </p>
             </div>
           </div>
@@ -379,40 +377,49 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
             </div>
           </div>
 
-          {/* 2. ชื่อรายการ & หมวดหมู่ */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                ชื่อบิลรายเดือน *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="เช่น ค่าห้องคอนโด, ค่าไฟ, ค่าเน็ต"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-900 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                หมวดหมู่
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-                className="w-full px-3 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-bold text-slate-800 outline-none"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.emoji} {c.label}
-                  </option>
-                ))}
-              </select>
+          {/* 2. ชื่อรายการ */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              ชื่อบิลรายเดือน *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="เช่น ค่าห้องคอนโด, ค่ารถ, ค่าไฟ, ค่าเน็ต"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-900 outline-none"
+            />
+          </div>
+
+          {/* 3. ปุ่มเลือกหมวดหมู่รายเดือน (มี ค่ารถ และเอา น้ำมัน ออก) */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              เลือกหมวดหมู่รายเดือน
+            </label>
+            <div className="grid grid-cols-5 gap-1.5">
+              {MONTHLY_BILL_CATEGORIES.map((cat) => {
+                const isSelected = category === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setCategory(cat.id)}
+                    className={`flex flex-col items-center justify-center py-2 px-1 rounded-2xl border text-[11px] font-bold transition cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="text-base">{cat.emoji}</span>
+                    <span className="mt-0.5 truncate">{cat.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* 3. ยอดขั้นต่ำต่อเดือน */}
+          {/* 4. ยอดขั้นต่ำต่อเดือน */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
               ยอดขั้นต่ำ / มาตรฐานต่อเดือน (บาท) *
@@ -430,36 +437,23 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
             />
           </div>
 
-          {/* 4. กำหนดช่วงเดือนเริ่มต้น ถึง เดือนสิ้นสุด */}
-          <div className="grid grid-cols-2 gap-2.5">
+          {/* 5. กำหนดช่วงเดือนเริ่มต้น ถึง เดือนสิ้นสุด (เดือน / ปี พ.ศ.) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                ตั้งแต่เดือน *
+                นับตั้งแต่เดือน (พ.ศ.) *
               </label>
-              <input
-                type="month"
-                required
-                value={startMonth}
-                onChange={(e) => setStartMonth(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 outline-none"
-              />
+              <ThaiMonthPicker value={startMonth} onChange={setStartMonth} />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                ถึงเดือนสิ้นสุด *
+                ถึงเดือนสิ้นสุด (พ.ศ.) *
               </label>
-              <input
-                type="month"
-                required
-                value={endMonth}
-                min={startMonth}
-                onChange={(e) => setEndMonth(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 outline-none"
-              />
+              <ThaiMonthPicker value={endMonth} onChange={setEndMonth} />
             </div>
           </div>
 
-          {/* 5. แชร์กับอีกฝ่ายไหม */}
+          {/* 6. แชร์กับอีกฝ่ายไหม */}
           <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
@@ -520,7 +514,7 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
               <div>
                 <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
                   เช็คลิสต์บิลเดือน
-                  {THAI_MONTHS.find((m) => m.value === checklistMonth)?.label}{' '}
+                  {THAI_MONTHS.find((m) => m.value === checklistMonth)?.label} พ.ศ.{' '}
                   {checklistYear + 543}
                 </h3>
                 <p className="text-xs text-slate-500">
@@ -536,7 +530,7 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
               <div className="text-center py-10 px-4 rounded-2xl bg-slate-50/70 border border-dashed border-slate-200">
                 <Sparkles className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
                 <p className="text-sm font-bold text-slate-700">
-                  ยังไม่มีบิลรายเดือนในงวด {activeYearMonth}
+                  ยังไม่มีบิลรายเดือนในงวด {formatThaiYearMonth(activeYearMonth)}
                 </p>
                 <button
                   type="button"
@@ -573,6 +567,9 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                             <h4 className="text-sm sm:text-base font-extrabold text-slate-900">
                               {bill.title}
                             </h4>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700">
+                              หมวด{bill.category}
+                            </span>
                             <span
                               className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ownerInfo.badgeBg} ${ownerInfo.badgeText}`}
                             >
@@ -589,7 +586,8 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                             )}
                           </div>
                           <p className="text-[11px] text-slate-500 mt-0.5">
-                            📆 {bill.startMonth} ถึง {bill.endMonth} • ขั้นต่ำ ฿
+                            📆 {formatThaiYearMonth(bill.startMonth)} ถึง{' '}
+                            {formatThaiYearMonth(bill.endMonth)} • ขั้นต่ำ ฿
                             {formatCurrency(bill.minAmount)}
                           </p>
                         </div>
@@ -731,7 +729,9 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                                 onClick={() =>
                                   setPreviewSlip({
                                     url: payment.ownerSlipUrl!,
-                                    title: `${bill.title} (${activeYearMonth})`,
+                                    title: `${bill.title} (${formatThaiYearMonth(
+                                      activeYearMonth
+                                    )})`,
                                     payerName: ownerInfo.name,
                                   })
                                 }
@@ -805,7 +805,9 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                                   onClick={() =>
                                     setPreviewSlip({
                                       url: payment.partnerSlipUrl!,
-                                      title: `${bill.title} (${activeYearMonth})`,
+                                      title: `${bill.title} (${formatThaiYearMonth(
+                                        activeYearMonth
+                                      )})`,
                                       payerName: partnerInfo.name,
                                     })
                                   }

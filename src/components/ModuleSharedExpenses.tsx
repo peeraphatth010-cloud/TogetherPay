@@ -29,6 +29,7 @@ import {
   calculateSharedItemBreakdown,
   formatCurrency,
 } from '../utils/calculations';
+import { ThaiDatePicker, formatThaiDate } from './ThaiDateInput';
 
 interface ModuleSharedExpensesProps {
   expenses: SharedExpense[];
@@ -130,9 +131,9 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
     const numericAmount = parseFloat(amount);
     if (!title.trim() || isNaN(numericAmount) || numericAmount <= 0) return;
 
-    const parsedDate = new Date(date);
-    const expMonth = !isNaN(parsedDate.getTime()) ? parsedDate.getMonth() + 1 : filterMonth;
-    const expYear = !isNaN(parsedDate.getTime()) ? parsedDate.getFullYear() : filterYear;
+    const parts = date.split('-');
+    const expYear = parseInt(parts[0], 10) || filterYear;
+    const expMonth = parseInt(parts[1], 10) || filterMonth;
 
     setIsSubmitting(true);
     try {
@@ -184,7 +185,6 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
     createdAt: Date.now(),
   });
 
-  // Filtered monthly summary including settlements
   const monthlyRaw = filteredExpenses.reduce(
     (acc, item) => {
       const b = calculateSharedItemBreakdown(item);
@@ -217,7 +217,7 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
         <div className="flex items-center justify-between sm:justify-start gap-3">
           <div>
             <span className="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-slate-900/10 text-slate-900">
-              โมดูล 1 • บันทึกค่าใช้จ่าย (ร่วมกัน)
+              บันทึกค่าใช้จ่าย (ร่วมกัน)
             </span>
             <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 mt-1">
               {coupleSummary.netDirection === 'settled' ? (
@@ -243,7 +243,7 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
           </button>
         </div>
 
-        {/* Filter Month / Year + Desktop Settle Button */}
+        {/* Filter Month / Year (พ.ศ.) + Desktop Settle Button */}
         <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2">
           <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-slate-900/10">
             <Filter className="w-3.5 h-3.5 text-slate-700" />
@@ -354,35 +354,30 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
             </div>
           </div>
 
-          {/* 2. รายการ ชื่อ & วันที่ */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                ชื่อรายการ *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="เช่น กินหมูกระทะ, เติมน้ำมัน, ค่าที่พัก"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white text-sm font-semibold text-slate-900 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                วันที่
-              </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 outline-none"
-              />
-            </div>
+          {/* 2. รายการ ชื่อ */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              ชื่อรายการ *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="เช่น กินหมูกระทะ, เติมน้ำมัน, ค่าที่พัก"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white text-sm font-semibold text-slate-900 outline-none"
+            />
           </div>
 
-          {/* 3. ปุ่มเลือกหมวด */}
+          {/* 3. วันที่ (เรียง วันที่ -> เดือน -> ปี พ.ศ.) */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              วันที่ (วัน / เดือน / ปี พ.ศ.)
+            </label>
+            <ThaiDatePicker value={date} onChange={setDate} />
+          </div>
+
+          {/* 4. ปุ่มเลือกหมวด */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               เลือกหมวดหมู่
@@ -409,7 +404,7 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
             </div>
           </div>
 
-          {/* 4. ใครเป็นคนออก */}
+          {/* 5. ใครเป็นคนออก */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               ใครเป็นคนออกเงิน?
@@ -440,7 +435,7 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
             </div>
           </div>
 
-          {/* 5. การหารเงิน */}
+          {/* 6. การหารเงิน */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               การหารเงิน
@@ -487,7 +482,7 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
             )}
           </div>
 
-          {/* 6. สถานที่ GPS */}
+          {/* 7. สถานที่ GPS */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs font-bold text-slate-700">
@@ -585,7 +580,7 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
             <div className="flex items-center justify-between mb-3.5">
               <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
                 รายการใช้จ่ายร่วมกัน • เดือน
-                {THAI_MONTHS.find((m) => m.value === filterMonth)?.label} {filterYear + 543}
+                {THAI_MONTHS.find((m) => m.value === filterMonth)?.label} พ.ศ. {filterYear + 543}
               </h3>
               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700">
                 {filteredExpenses.length} รายการ
@@ -640,7 +635,7 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                            <span>📅 {item.date}</span>
+                            <span>📅 {formatThaiDate(item.date)}</span>
                             {item.locationName && (
                               <span className="inline-flex items-center gap-0.5 text-blue-600 font-medium truncate max-w-[180px]">
                                 <MapPin className="w-3 h-3 shrink-0" />

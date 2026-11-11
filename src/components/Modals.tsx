@@ -19,6 +19,7 @@ import {
   formatCurrency,
 } from '../utils/calculations';
 import { generateCoupleFinancialAdvice } from '../utils/aiAdvisor';
+import { ThaiDatePicker, formatThaiDate } from './ThaiDateInput';
 
 interface SettleUpModalProps {
   isOpen: boolean;
@@ -95,9 +96,9 @@ export const SettleUpModal: React.FC<SettleUpModalProps> = ({
     const numAmt = parseFloat(amount);
     if (isNaN(numAmt) || numAmt <= 0) return;
 
-    const parsedDate = new Date(date);
-    const m = !isNaN(parsedDate.getTime()) ? parsedDate.getMonth() + 1 : defaultMonth;
-    const y = !isNaN(parsedDate.getTime()) ? parsedDate.getFullYear() : defaultYear;
+    const parts = date.split('-');
+    const y = parseInt(parts[0], 10) || defaultYear;
+    const m = parseInt(parts[1], 10) || defaultMonth;
 
     setIsSubmitting(true);
     try {
@@ -218,8 +219,8 @@ export const SettleUpModal: React.FC<SettleUpModalProps> = ({
             </div>
           </div>
 
-          {/* Amount & Date */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Amount & Date (วัน / เดือน / ปี พ.ศ.) */}
+          <div className="space-y-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 จำนวนเงินที่โอนเคลียร์ (บาท) *
@@ -238,15 +239,9 @@ export const SettleUpModal: React.FC<SettleUpModalProps> = ({
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                วันที่โอนคืน
+                วันที่โอนคืน (วัน / เดือน / ปี พ.ศ.)
               </label>
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3.5 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 outline-none"
-              />
+              <ThaiDatePicker value={date} onChange={setDate} />
             </div>
           </div>
 
@@ -329,7 +324,7 @@ export const SettleUpModal: React.FC<SettleUpModalProps> = ({
                       {PERSON_INFO[s.toPerson].avatar} {PERSON_INFO[s.toPerson].name}
                     </span>
                     <div className="text-[11px] text-slate-500 mt-0.5">
-                      📅 {s.date} {s.note ? `• ${s.note}` : ''}
+                      📅 {formatThaiDate(s.date)} {s.note ? `• ${s.note}` : ''}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

@@ -2,6 +2,7 @@ export type PersonId = 'nurse' | 'pee';
 
 export type ExpenseCategory =
   | 'น้ำมัน'
+  | 'ค่ารถ'
   | 'อาหาร'
   | 'ที่พัก'
   | 'ช้อปปิ้ง'
@@ -16,9 +17,9 @@ export interface SharedExpense {
   category: ExpenseCategory;
   payer: PersonId;
   splitType: SplitType;
-  date: string; // YYYY-MM-DD
+  date: string; // Stored as YYYY-MM-DD
   month: number; // 1-12
-  year: number; // YYYY
+  year: number; // YYYY (AD internally for sorting, displayed as พ.ศ.)
   locationName?: string;
   locationLat?: number;
   locationLng?: number;
@@ -31,7 +32,7 @@ export interface PersonalExpense {
   title: string;
   amount: number;
   category: ExpenseCategory;
-  date: string; // YYYY-MM-DD
+  date: string; // Stored as YYYY-MM-DD
   month: number; // 1-12
   year: number; // YYYY
   createdAt: number;
@@ -39,13 +40,13 @@ export interface PersonalExpense {
 
 export interface MonthlyBill {
   id: string;
-  owner: PersonId; // คนตั้งบิลหลัก
+  owner: PersonId;
   title: string;
-  minAmount: number; // ยอดขั้นต่ำต่อเดือน
+  minAmount: number;
   category: ExpenseCategory;
-  startMonth: string; // YYYY-MM
-  endMonth: string; // YYYY-MM
-  splitWithPartner: boolean; // เรียกเก็บ/หารกับอีกฝ่ายไหม
+  startMonth: string; // Stored as YYYY-MM
+  endMonth: string; // Stored as YYYY-MM
+  splitWithPartner: boolean;
   ownerShareDefault: number;
   partnerShareDefault: number;
   createdAt: number;
@@ -71,8 +72,8 @@ export interface MonthlyBillPayment {
 
 export interface SettlementRecord {
   id: string;
-  fromPerson: PersonId; // คนโอนคืน (เช่น nurse)
-  toPerson: PersonId; // คนรับเงินคืน (เช่น pee)
+  fromPerson: PersonId;
+  toPerson: PersonId;
   amount: number;
   date: string; // YYYY-MM-DD
   month: number;
@@ -82,7 +83,7 @@ export interface SettlementRecord {
   createdAt: number;
 }
 
-export const CATEGORIES: {
+export interface CategoryMeta {
   id: ExpenseCategory;
   label: string;
   emoji: string;
@@ -90,7 +91,10 @@ export const CATEGORIES: {
   bgLight: string;
   textDark: string;
   border: string;
-}[] = [
+}
+
+// หมวดหมู่สำหรับค่าใช้จ่ายทั่วไป (ร่วมกัน / ส่วนตัว)
+export const CATEGORIES: CategoryMeta[] = [
   {
     id: 'อาหาร',
     label: 'อาหาร',
@@ -135,6 +139,69 @@ export const CATEGORIES: {
     bgLight: 'bg-emerald-50',
     textDark: 'text-emerald-700',
     border: 'border-emerald-200',
+  },
+];
+
+// หมวดหมู่สำหรับเพิ่มรายการเรียกเก็บรายเดือน (เพิ่ม "ค่ารถ" และเอา "น้ำมัน" ออก)
+export const MONTHLY_BILL_CATEGORIES: CategoryMeta[] = [
+  {
+    id: 'ที่พัก',
+    label: 'ที่พัก',
+    emoji: '🏠',
+    color: '#8B5CF6',
+    bgLight: 'bg-violet-50',
+    textDark: 'text-violet-700',
+    border: 'border-violet-200',
+  },
+  {
+    id: 'ค่ารถ',
+    label: 'ค่ารถ',
+    emoji: '🚗',
+    color: '#0EA5E9',
+    bgLight: 'bg-sky-50',
+    textDark: 'text-sky-700',
+    border: 'border-sky-200',
+  },
+  {
+    id: 'อาหาร',
+    label: 'อาหาร',
+    emoji: '🍽️',
+    color: '#F59E0B',
+    bgLight: 'bg-amber-50',
+    textDark: 'text-amber-700',
+    border: 'border-amber-200',
+  },
+  {
+    id: 'ช้อปปิ้ง',
+    label: 'ช้อปปิ้ง',
+    emoji: '🛍️',
+    color: '#EC4899',
+    bgLight: 'bg-pink-50',
+    textDark: 'text-pink-700',
+    border: 'border-pink-200',
+  },
+  {
+    id: 'ท่องเที่ยว',
+    label: 'ท่องเที่ยว',
+    emoji: '✈️',
+    color: '#10B981',
+    bgLight: 'bg-emerald-50',
+    textDark: 'text-emerald-700',
+    border: 'border-emerald-200',
+  },
+];
+
+// รวมทุกหมวดสำหรับแสดงผลใน Dashboard และกราฟ
+export const ALL_CATEGORIES: CategoryMeta[] = [
+  ...CATEGORIES,
+  {
+    id: 'ค่ารถ',
+    label: 'ค่ารถ',
+    emoji: '🚗',
+    color: '#0EA5E9',
+    bgLight: 'bg-sky-50',
+    textDark: 'text-sky-700',
+    border: 'border-sky-200',
   },
 ];
 
