@@ -1,0 +1,179 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// This security rules file assumes the following data structures for TogetherPay
+// (Direct couple expense tracker for Nurse and Pee without Firebase Auth):
+//
+// Collection: shared_expenses
+// Document ID: {expenseId}
+// Required Fields:
+//   - title: string (1..300 chars) - Expense description
+//   - amount: number (>= 0) - Expense amount in THB
+//   - category: string (<= 100 chars) - Expense category identifier
+//   - payer: string ('nurse' | 'pee') - Who paid upfront
+//   - splitType: string ('split_2' | 'nurse_only' | 'pee_only') - Split mode
+//   - date: string (<= 50 chars) - Date string (YYYY-MM-DD)
+//   - month: number (1..12) - Numeric month
+//   - year: number - Numeric year
+// Optional Fields:
+//   - note: string (<= 1000 chars)
+//   - createdAt: number | timestamp | string
+//   - updatedAt: number | timestamp | string
+//
+// Collection: personal_expenses
+// Document ID: {expenseId}
+// Required Fields:
+//   - owner: string ('nurse' | 'pee') - Expense owner
+//   - title: string (1..300 chars) - Expense description
+//   - amount: number (>= 0) - Expense amount in THB
+//   - category: string (<= 100 chars) - Expense category identifier
+//   - date: string (<= 50 chars) - Date string (YYYY-MM-DD)
+//   - month: number (1..12) - Numeric month
+//   - year: number - Numeric year
+// Optional Fields:
+//   - note: string (<= 1000 chars)
+//   - createdAt: number | timestamp | string
+//   - updatedAt: number | timestamp | string
+//
+// Collection: monthly_bills
+// Document ID: {billId}
+// Required Fields:
+//   - owner: string ('nurse' | 'pee') - Bill owner
+//   - title: string (1..300 chars) - Bill title
+//   - minAmount: number (>= 0) - Minimum or fixed monthly amount
+//   - startMonth: string (<= 20 chars) - Start month (YYYY-MM)
+//   - endMonth: string (<= 20 chars) - End month (YYYY-MM)
+//   - splitWithPartner: bool - Whether split 50/50 with partner
+// Optional Fields:
+//   - note: string (<= 1000 chars)
+//   - createdAt: number | timestamp | string
+//   - updatedAt: number | timestamp | string
+//
+// Collection: monthly_bill_payments
+// Document ID: {paymentId}
+// Required Fields:
+//   - billId: string (1..128 chars) - Reference to monthly_bills doc ID
+//   - yearMonth: string (<= 20 chars) - Target billing month (YYYY-MM)
+//   - actualTotalAmount: number (>= 0) - Actual total amount for the month
+//   - ownerPaid: bool - Whether owner's portion is paid
+//   - partnerPaid: bool - Whether partner's portion is paid
+// Optional Fields:
+//   - note: string (<= 1000 chars)
+//   - createdAt: number | timestamp | string
+//   - updatedAt: number | timestamp | string
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields) &&
+             request.resource.data.keys().size() <= 20;
+    }
+
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+             request.resource.data[field].size() >= minLen &&
+             request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidPerson(person) {
+      return person in ['nurse', 'pee'];
+    }
+
+    function isValidOptionalNote(data) {
+      return !('note' in data) || (data.note is string && data.note.size() <= 1000);
+    }
+
+    // ===============================================================
+    // Domain Validators (Used in both create and update)
+    // ===============================================================
+
+    function isValidSharedExpense(data) {
+      return hasRequiredFields(['title', 'amount', 'category', 'payer', 'splitType', 'date', 'month', 'year']) &&
+             validStringLength('title', 1, 300) &&
+             data.amount is number && data.amount >= 0 &&
+             validStringLength('category', 0, 100) &&
+             isValidPerson(data.payer) &&
+             data.splitType in ['split_2', 'nurse_only', 'pee_only'] &&
+             validStringLength('date', 0, 50) &&
+             data.month is number &&
+             data.year is number &&
+             isValidOptionalNote(data);
+    }
+
+    function isValidPersonalExpense(data) {
+      return hasRequiredFields(['owner', 'title', 'amount', 'category', 'date', 'month', 'year']) &&
+             isValidPerson(data.owner) &&
+             validStringLength('title', 1, 300) &&
+             data.amount is number && data.amount >= 0 &&
+             validStringLength('category', 0, 100) &&
+             validStringLength('date', 0, 50) &&
+             data.month is number &&
+             data.year is number &&
+             isValidOptionalNote(data);
+    }
+
+    function isValidMonthlyBill(data) {
+      return hasRequiredFields(['owner', 'title', 'minAmount', 'startMonth', 'endMonth', 'splitWithPartner']) &&
+             isValidPerson(data.owner) &&
+             validStringLength('title', 1, 300) &&
+             data.minAmount is number && data.minAmount >= 0 &&
+             validStringLength('startMonth', 0, 20) &&
+             validStringLength('endMonth', 0, 20) &&
+             data.splitWithPartner is bool &&
+             isValidOptionalNote(data);
+    }
+
+    function isValidMonthlyBillPayment(data) {
+      return hasRequiredFields(['billId', 'yearMonth', 'actualTotalAmount', 'ownerPaid', 'partnerPaid']) &&
+             validStringLength('billId', 1, 128) &&
+             validStringLength('yearMonth', 0, 20) &&
+             data.actualTotalAmount is number && data.actualTotalAmount >= 0 &&
+             data.ownerPaid is bool &&
+             data.partnerPaid is bool &&
+             isValidOptionalNote(data);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /shared_expenses/{expenseId} {
+      allow read: if true;
+      allow create, update: if isValidSharedExpense(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /personal_expenses/{expenseId} {
+      allow read: if true;
+      allow create, update: if isValidPersonalExpense(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /monthly_bills/{billId} {
+      allow read: if true;
+      allow create, update: if isValidMonthlyBill(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /monthly_bill_payments/{paymentId} {
+      allow read: if true;
+      allow create, update: if isValidMonthlyBillPayment(request.resource.data);
+      allow delete: if true;
+    }
+
+    // Default deny for all other paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
