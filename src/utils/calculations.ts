@@ -4,6 +4,7 @@ import {
   MonthlyBillPayment,
   PersonId,
   PersonalExpense,
+  SettlementRecord,
   SharedExpense,
   CATEGORIES,
 } from '../types';
@@ -39,9 +40,7 @@ export function calculateSharedItemBreakdown(item: SharedExpense): SplitBreakdow
     nurseResponsible = 0;
   }
 
-  // ยอดที่พีออกแทนเนิร์ส = ถ้าพีเป็นคนจ่าย เนิร์สรับผิดชอบเท่าไหร่ พีก็ออกแทนเนิร์สเท่านั้น
   const peeAdvancedForNurse = item.payer === 'pee' ? nurseResponsible : 0;
-  // ยอดที่เนิร์สออกแทนพี = ถ้าเนิร์สเป็นคนจ่าย พีรับผิดชอบเท่าไหร่ เนิร์สก็ออกแทนพีเท่านั้น
   const nurseAdvancedForPee = item.payer === 'nurse' ? peeResponsible : 0;
 
   return {
@@ -54,9 +53,6 @@ export function calculateSharedItemBreakdown(item: SharedExpense): SplitBreakdow
   };
 }
 
-/**
- * ตรวจสอบว่าบิลรายเดือนอยู่ในช่วงเดือน-ปีที่เลือกหรือไม่ (YYYY-MM)
- */
 export function isBillActiveInYearMonth(bill: MonthlyBill, yearMonth: string): boolean {
   if (!bill.startMonth || !bill.endMonth) return true;
   return yearMonth >= bill.startMonth && yearMonth <= bill.endMonth;
@@ -77,9 +73,11 @@ export interface PersonDashboardMetrics {
   person: PersonId;
   personalTotal: number;
   sharedResponsibleTotal: number;
-  advancedForPartner: number; // ยอดที่ออกแทนอีกฝ่าย (จากรายการร่วมกัน + บิลรายเดือนที่จ่ายแล้วแต่คู่ยังไม่จ่ายคืน)
-  owesToPartner: number; // ยอดที่ต้องจ่ายให้อีกฝ่าย
-  monthlyBillsTotal: number; // ยอดบิลรายเดือนที่ตัวเองรับผิดชอบในงวดนี้
+  advancedForPartner: number; // ยอดที่ออกแทนอีกฝ่าย (หลังหักยอดที่เคลียร์แล้ว)
+  rawAdvancedForPartner: number; // ยอดที่ออกแทนอีกฝ่ายก่อนหักเคลียร์ยอด
+  owesToPartner: number; // ยอดที่ต้องจ่ายให้อีกฝ่าย (หลังหักยอดที่เคลียร์แล้ว)
+  settledByMeTotal: number; // ยอดที่คนนี้กดโอนเคลียร์คืนให้อีกฝ่ายแล้ว
+  monthlyBillsTotal: number;
   monthlyBillsPaidCount: number;
   monthlyBillsTotalCount: number;
   categoryTotals: {
@@ -92,13 +90,17 @@ export interface PersonDashboardMetrics {
 }
 
 export interface CoupleSettlementSummary {
-  totalSharedExpense: number; // ยอดค่าใช้จ่ายร่วมทั้งหมด (รวมบิลรายเดือนที่แชร์กัน)
-  peePaidTotal: number; // ยอดที่พีจ่ายออกไปในส่วนร่วมกัน
-  nursePaidTotal: number; // ยอดที่เนิร์สจ่ายออกไปในส่วนร่วมกัน
-  peeResponsibleTotal: number; // ยอดที่พีต้องรับผิดชอบจริง
-  nurseResponsibleTotal: number; // ยอดที่เนิร์สต้องรับผิดชอบจริง
-  peeAdvancedForNurseTotal: number; // พีออกแทนเนิร์สสะสม
-  nurseAdvancedForPeeTotal: number; // เนิร์สออกแทนพีสะสม
+  totalSharedExpense: number;
+  peePaidTotal: number;
+  nursePaidTotal: number;
+  peeResponsibleTotal: number;
+  nurseResponsibleTotal: number;
+  peeAdvancedForNurseTotal: number; // ยอดคงเหลือที่พีออกแทนเนิร์ส (หักที่เนิร์สโอนเคลียร์แล้ว)
+  nurseAdvancedForPeeTotal: number; // ยอดคงเหลือที่เนิร์สออกแทนพี (หักที่พีโอนเคลียร์แล้ว)
+  rawPeeAdvancedForNurse: number;
+  rawNurseAdvancedForPee: number;
+  nurseSettledToPeeTotal: number; // ยอดที่เนิร์สโอนเคลียร์คืนพีแล้ว
+  peeSettledToNurseTotal: number; // ยอดที่พีโอนเคลียร์คืนเนิร์สแล้ว
   netDirection: 'nurse_pays_pee' | 'pee_pays_nurse' | 'settled';
   netAmount: number;
   categoryProportions: {
@@ -115,6 +117,7 @@ export function computeDashboardAnalytics(params: {
   personalExpenses: PersonalExpense[];
   monthlyBills: MonthlyBill[];
   monthlyPayments: MonthlyBillPayment[];
+  settlements?: SettlementRecord[];
   selectedMonth: number;
   selectedYear: number;
   isAllTime: boolean;
@@ -135,12 +138,12 @@ export function computeDashboardAnalytics(params: {
     personalExpenses,
     monthlyBills,
     monthlyPayments,
+    settlements = [],
     selectedMonth,
     selectedYear,
     isAllTime,
   } = params;
 
-  // 1. Filter shared & personal expenses by month/year or all-time
   const filteredShared = isAllTime
     ? sharedExpenses
     : sharedExpenses.filter((e) => e.month === selectedMonth && e.year === selectedYear);
@@ -149,14 +152,17 @@ export function computeDashboardAnalytics(params: {
     ? personalExpenses
     : personalExpenses.filter((e) => e.month === selectedMonth && e.year === selectedYear);
 
-  // 2. Shared calculations
+  const filteredSettlements = isAllTime
+    ? settlements
+    : settlements.filter((s) => s.month === selectedMonth && s.year === selectedYear);
+
   let totalSharedExpense = 0;
   let peePaidTotal = 0;
   let nursePaidTotal = 0;
   let peeResponsibleTotal = 0;
   let nurseResponsibleTotal = 0;
-  let peeAdvancedForNurseTotal = 0;
-  let nurseAdvancedForPeeTotal = 0;
+  let rawPeeAdvancedForNurse = 0;
+  let rawNurseAdvancedForPee = 0;
 
   const sharedByCategory: Record<ExpenseCategory, number> = {
     อาหาร: 0,
@@ -189,8 +195,8 @@ export function computeDashboardAnalytics(params: {
     nursePaidTotal += b.nursePaid;
     peeResponsibleTotal += b.peeResponsible;
     nurseResponsibleTotal += b.nurseResponsible;
-    peeAdvancedForNurseTotal += b.peeAdvancedForNurse;
-    nurseAdvancedForPeeTotal += b.nurseAdvancedForPee;
+    rawPeeAdvancedForNurse += b.peeAdvancedForNurse;
+    rawNurseAdvancedForPee += b.nurseAdvancedForPee;
 
     if (sharedByCategory[item.category] !== undefined) {
       sharedByCategory[item.category] += Number(item.amount) || 0;
@@ -203,7 +209,6 @@ export function computeDashboardAnalytics(params: {
     }
   }
 
-  // 3. Personal expenses
   let peePersonalTotal = 0;
   let nursePersonalTotal = 0;
 
@@ -222,10 +227,9 @@ export function computeDashboardAnalytics(params: {
     }
   }
 
-  // 4. Monthly bills in selected scope
+  // Monthly bills
   const targetYearMonths: string[] = [];
   if (isAllTime) {
-    // Collect distinct yearMonths from payments + current yearMonth
     const ymSet = new Set<string>();
     ymSet.add(formatYearMonth(selectedYear, selectedMonth));
     monthlyPayments.forEach((p) => ymSet.add(p.yearMonth));
@@ -275,23 +279,20 @@ export function computeDashboardAnalytics(params: {
           nurseMonthlyBillsTotal += partnerShare;
           if (nurseCategoryMap[cat] !== undefined) nurseCategoryMap[cat] += partnerShare;
 
-          // Include shared monthly bill in shared summary
           totalSharedExpense += totalBillAmt;
           peeResponsibleTotal += ownerShare;
           nurseResponsibleTotal += partnerShare;
           if (sharedByCategory[cat] !== undefined) sharedByCategory[cat] += totalBillAmt;
 
-          // If Pee paid the bill and Nurse hasn't paid her share yet, Pee advanced for Nurse
           if (ownerPaid && !partnerPaid) {
             peePaidTotal += totalBillAmt;
-            peeAdvancedForNurseTotal += partnerShare;
+            rawPeeAdvancedForNurse += partnerShare;
           } else if (ownerPaid && partnerPaid) {
             peePaidTotal += ownerShare;
             nursePaidTotal += partnerShare;
           }
         }
       } else {
-        // Owner is Nurse
         nurseMonthlyTotalCount += 1;
         if (ownerPaid) nurseMonthlyPaidCount += 1;
         nurseMonthlyBillsTotal += ownerShare;
@@ -310,7 +311,7 @@ export function computeDashboardAnalytics(params: {
 
           if (ownerPaid && !partnerPaid) {
             nursePaidTotal += totalBillAmt;
-            nurseAdvancedForPeeTotal += partnerShare;
+            rawNurseAdvancedForPee += partnerShare;
           } else if (ownerPaid && partnerPaid) {
             nursePaidTotal += ownerShare;
             peePaidTotal += partnerShare;
@@ -320,9 +321,30 @@ export function computeDashboardAnalytics(params: {
     }
   }
 
-  // Net settlement between Pee and Nurse
-  // Pee advanced for Nurse vs Nurse advanced for Pee
-  const netDiff = peeAdvancedForNurseTotal - nurseAdvancedForPeeTotal;
+  // Settlements (เคลียร์เงินคืนให้กัน)
+  let nurseSettledToPeeTotal = 0;
+  let peeSettledToNurseTotal = 0;
+
+  for (const s of filteredSettlements) {
+    const amt = Number(s.amount) || 0;
+    if (s.fromPerson === 'nurse' && s.toPerson === 'pee') {
+      nurseSettledToPeeTotal += amt;
+    } else if (s.fromPerson === 'pee' && s.toPerson === 'nurse') {
+      peeSettledToNurseTotal += amt;
+    }
+  }
+
+  // Remaining amounts after subtracting settlements
+  const peeAdvancedForNurseTotal = Math.max(0, rawPeeAdvancedForNurse - nurseSettledToPeeTotal);
+  const nurseAdvancedForPeeTotal = Math.max(0, rawNurseAdvancedForPee - peeSettledToNurseTotal);
+
+  // Net difference after settlements:
+  // Positive => Nurse still owes Pee; Negative => Pee still owes Nurse
+  const netDiff =
+    rawPeeAdvancedForNurse -
+    nurseSettledToPeeTotal -
+    (rawNurseAdvancedForPee - peeSettledToNurseTotal);
+
   let netDirection: 'nurse_pays_pee' | 'pee_pays_nurse' | 'settled' = 'settled';
   let netAmount = 0;
 
@@ -348,7 +370,6 @@ export function computeDashboardAnalytics(params: {
     });
   };
 
-  // Monthly comparison across 12 months of selectedYear
   const monthNames = [
     'ม.ค.',
     'ก.พ.',
@@ -399,7 +420,9 @@ export function computeDashboardAnalytics(params: {
       personalTotal: peePersonalTotal,
       sharedResponsibleTotal: peeResponsibleTotal,
       advancedForPartner: peeAdvancedForNurseTotal,
+      rawAdvancedForPartner: rawPeeAdvancedForNurse,
       owesToPartner: nurseAdvancedForPeeTotal,
+      settledByMeTotal: peeSettledToNurseTotal,
       monthlyBillsTotal: peeMonthlyBillsTotal,
       monthlyBillsPaidCount: peeMonthlyPaidCount,
       monthlyBillsTotalCount: peeMonthlyTotalCount,
@@ -410,7 +433,9 @@ export function computeDashboardAnalytics(params: {
       personalTotal: nursePersonalTotal,
       sharedResponsibleTotal: nurseResponsibleTotal,
       advancedForPartner: nurseAdvancedForPeeTotal,
+      rawAdvancedForPartner: rawNurseAdvancedForPee,
       owesToPartner: peeAdvancedForNurseTotal,
+      settledByMeTotal: nurseSettledToPeeTotal,
       monthlyBillsTotal: nurseMonthlyBillsTotal,
       monthlyBillsPaidCount: nurseMonthlyPaidCount,
       monthlyBillsTotalCount: nurseMonthlyTotalCount,
@@ -424,6 +449,10 @@ export function computeDashboardAnalytics(params: {
       nurseResponsibleTotal,
       peeAdvancedForNurseTotal,
       nurseAdvancedForPeeTotal,
+      rawPeeAdvancedForNurse,
+      rawNurseAdvancedForPee,
+      nurseSettledToPeeTotal,
+      peeSettledToNurseTotal,
       netDirection,
       netAmount,
       categoryProportions: buildCategoryArray(sharedByCategory),
@@ -432,9 +461,6 @@ export function computeDashboardAnalytics(params: {
   };
 }
 
-/**
- * บีบอัดรูปสลิปโอนเงินให้เป็น Base64 Data URL ขนาดเล็ก (~60-120KB) เพื่อบันทึกลง Firestore ได้รวดเร็ว
- */
 export function compressSlipImage(file: File, maxWidth = 720, quality = 0.72): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

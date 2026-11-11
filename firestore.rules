@@ -20,6 +20,10 @@ rules_version = '2';
 //   - year: number - Numeric year
 // Optional Fields:
 //   - note: string (<= 1000 chars)
+//   - slipUrl: string
+//   - locationName: string
+//   - locationLat: number
+//   - locationLng: number
 //   - createdAt: number | timestamp | string
 //   - updatedAt: number | timestamp | string
 //
@@ -35,6 +39,10 @@ rules_version = '2';
 //   - year: number - Numeric year
 // Optional Fields:
 //   - note: string (<= 1000 chars)
+//   - slipUrl: string
+//   - locationName: string
+//   - locationLat: number
+//   - locationLng: number
 //   - createdAt: number | timestamp | string
 //   - updatedAt: number | timestamp | string
 //
@@ -62,8 +70,30 @@ rules_version = '2';
 //   - partnerPaid: bool - Whether partner's portion is paid
 // Optional Fields:
 //   - note: string (<= 1000 chars)
+//   - ownerSlipUrl: string
+//   - partnerSlipUrl: string
 //   - createdAt: number | timestamp | string
 //   - updatedAt: number | timestamp | string
+//
+// Collection: settlements
+// Document ID: {settlementId}
+// Required Fields:
+//   - fromPerson: string ('nurse' | 'pee') - Who transferred the settlement money
+//   - toPerson: string ('nurse' | 'pee') - Who received the settlement money
+//   - amount: number (> 0) - Settlement amount in THB
+//   - date: string (<= 50 chars) - Date string (YYYY-MM-DD)
+//   - month: number (1..12) - Numeric month
+//   - year: number - Numeric year
+// Optional Fields:
+//   - note: string (<= 1000 chars)
+//   - slipUrl: string
+//   - createdAt: number | timestamp | string
+//   - updatedAt: number | timestamp | string
+//
+// Collection: app_settings
+// Document ID: {settingId}
+// Fields:
+//   - Shared configuration preferences (up to 20 keys)
 //
 // ===============================================================
 
@@ -76,7 +106,7 @@ service cloud.firestore {
 
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields) &&
-             request.resource.data.keys().size() <= 20;
+             request.resource.data.keys().size() <= 25;
     }
 
     function validStringLength(field, minLen, maxLen) {
@@ -143,6 +173,23 @@ service cloud.firestore {
              isValidOptionalNote(data);
     }
 
+    function isValidSettlement(data) {
+      return hasRequiredFields(['fromPerson', 'toPerson', 'amount', 'date', 'month', 'year']) &&
+             isValidPerson(data.fromPerson) &&
+             isValidPerson(data.toPerson) &&
+             data.amount is number && data.amount > 0 &&
+             validStringLength('date', 0, 50) &&
+             data.month is number &&
+             data.year is number &&
+             isValidOptionalNote(data) &&
+             (!('slipUrl' in data) || data.slipUrl is string) &&
+             (!('createdAt' in data) || data.createdAt is number || data.createdAt is timestamp || data.createdAt is string);
+    }
+
+    function isValidAppSetting(data) {
+      return data.keys().size() <= 20;
+    }
+
     // ===============================================================
     // Collection Rules
     // ===============================================================
@@ -168,6 +215,18 @@ service cloud.firestore {
     match /monthly_bill_payments/{paymentId} {
       allow read: if true;
       allow create, update: if isValidMonthlyBillPayment(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /settlements/{settlementId} {
+      allow read: if true;
+      allow create, update: if isValidSettlement(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /app_settings/{settingId} {
+      allow read: if true;
+      allow create, update: if isValidAppSetting(request.resource.data);
       allow delete: if true;
     }
 

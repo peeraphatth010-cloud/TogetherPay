@@ -12,25 +12,27 @@ import {
   User,
   CheckSquare,
   BarChart3,
-  Cloud,
   Heart,
-  Database,
+  HandCoins,
+  Sparkles,
 } from 'lucide-react';
 import { db } from './firebase';
 import {
   MonthlyBill,
   MonthlyBillPayment,
   PersonalExpense,
+  SettlementRecord,
   SharedExpense,
+  THAI_MONTHS,
 } from './types';
 import { computeDashboardAnalytics } from './utils/calculations';
-import { BentoHero } from './components/BentoHero';
+import { getSavedGeminiApiKey, saveGeminiApiKey } from './utils/aiAdvisor';
 import { ModuleSharedExpenses } from './components/ModuleSharedExpenses';
 import { ModulePersonalExpenses } from './components/ModulePersonalExpenses';
 import { ModuleMonthlyBills } from './components/ModuleMonthlyBills';
 import { ModuleDashboard } from './components/ModuleDashboard';
+import { SettleUpModal, AiAdvisorModal } from './components/Modals';
 
-// Helper to remove undefined keys before sending to Firestore
 function cleanFirestoreData<T extends Record<string, unknown>>(obj: T): T {
   const cleaned: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
@@ -50,19 +52,27 @@ export function App() {
   const [personalExpenses, setPersonalExpenses] = useState<PersonalExpense[]>([]);
   const [monthlyBills, setMonthlyBills] = useState<MonthlyBill[]>([]);
   const [monthlyPayments, setMonthlyPayments] = useState<MonthlyBillPayment[]>([]);
-  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [settlements, setSettlements] = useState<SettlementRecord[]>([]);
+  const [geminiApiKey, setGeminiApiKey] = useState<string>(getSavedGeminiApiKey);
+
+  const [isSettleModalOpen, setIsSettleModalOpen] = useState<boolean>(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
 
+  const handleSelectModule = (mod: 'shared' | 'personal' | 'monthly' | 'dashboard') => {
+    setActiveModule(mod);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Real-time listeners on Firestore collections
   useEffect(() => {
     const unsubShared = onSnapshot(
       collection(db, 'shared_expenses'),
       (snap) => {
-        setIsConnected(true);
         setSyncError(null);
         const list: SharedExpense[] = [];
         snap.forEach((d) => {
@@ -87,9 +97,7 @@ export function App() {
         list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         setPersonalExpenses(list);
       },
-      (err) => {
-        console.error('Firestore personal_expenses error:', err);
-      }
+      (err) => console.error('Firestore personal_expenses error:', err)
     );
 
     const unsubBills = onSnapshot(
@@ -102,9 +110,7 @@ export function App() {
         list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         setMonthlyBills(list);
       },
-      (err) => {
-        console.error('Firestore monthly_bills error:', err);
-      }
+      (err) => console.error('Firestore monthly_bills error:', err)
     );
 
     const unsubPayments = onSnapshot(
@@ -116,8 +122,35 @@ export function App() {
         });
         setMonthlyPayments(list);
       },
-      (err) => {
-        console.error('Firestore monthly_bill_payments error:', err);
+      (err) => console.error('Firestore monthly_bill_payments error:', err)
+    );
+
+    const unsubSettlements = onSnapshot(
+      collection(db, 'settlements'),
+      (snap) => {
+        const list: SettlementRecord[] = [];
+        snap.forEach((d) => {
+          list.push({ id: d.id, ...(d.data() as Omit<SettlementRecord, 'id'>) });
+        });
+        list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        setSettlements(list);
+      },
+      (err) => console.error('Firestore settlements error:', err)
+    );
+
+    const unsubSettings = onSnapshot(
+      doc(db, 'app_settings', 'gemini_config'),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as { apiKey?: string };
+          if (data.apiKey && !getSavedGeminiApiKey()) {
+            saveGeminiApiKey(data.apiKey);
+            setGeminiApiKey(data.apiKey);
+          }
+        }
+      },
+      () => {
+        // ignore if settings doc doesn't exist yet
       }
     );
 
@@ -126,10 +159,12 @@ export function App() {
       unsubPersonal();
       unsubBills();
       unsubPayments();
+      unsubSettlements();
+      unsubSettings();
     };
   }, []);
 
-  // Handlers for Module 1: Shared Expenses
+  // Handlers
   const handleAddSharedExpense = async (
     data: Omit<SharedExpense, 'id' | 'createdAt'>
   ) => {
@@ -144,7 +179,6 @@ export function App() {
     await deleteDoc(doc(db, 'shared_expenses', id));
   };
 
-  // Handlers for Module 2: Personal Expenses
   const handleAddPersonalExpense = async (
     data: Omit<PersonalExpense, 'id' | 'createdAt'>
   ) => {
@@ -159,7 +193,6 @@ export function App() {
     await deleteDoc(doc(db, 'personal_expenses', id));
   };
 
-  // Handlers for Module 3: Monthly Bills & Payments
   const handleAddMonthlyBill = async (
     data: Omit<MonthlyBill, 'id' | 'createdAt'>
   ) => {
@@ -185,12 +218,38 @@ export function App() {
     await setDoc(doc(db, 'monthly_bill_payments', docId), payload);
   };
 
-  // Hero analytics for current month
+  const handleAddSettlement = async (
+    data: Omit<SettlementRecord, 'id' | 'createdAt'>
+  ) => {
+    const payload = cleanFirestoreData({
+      ...data,
+      createdAt: Date.now(),
+    });
+    await addDoc(collection(db, 'settlements'), payload);
+  };
+
+  const handleDeleteSettlement = async (id: string) => {
+    await deleteDoc(doc(db, 'settlements', id));
+  };
+
+  const handleSaveApiKey = async (newKey: string, syncToCloud: boolean) => {
+    saveGeminiApiKey(newKey);
+    setGeminiApiKey(newKey);
+    if (syncToCloud) {
+      await setDoc(doc(db, 'app_settings', 'gemini_config'), {
+        apiKey: newKey,
+        updatedAt: Date.now(),
+      });
+    }
+  };
+
+  // Current month analytics
   const currentMonthAnalytics = computeDashboardAnalytics({
     sharedExpenses,
     personalExpenses,
     monthlyBills,
     monthlyPayments,
+    settlements,
     selectedMonth: currentMonth,
     selectedYear: currentYear,
     isAllTime: false,
@@ -200,160 +259,123 @@ export function App() {
     id: 'shared' | 'personal' | 'monthly' | 'dashboard';
     label: string;
     shortLabel: string;
-    badge: string;
     icon: React.ReactNode;
   }[] = [
     {
       id: 'shared',
       label: '1. ร่วมกัน',
       shortLabel: 'ร่วมกัน',
-      badge: String(
-        sharedExpenses.filter(
-          (e) => e.month === currentMonth && e.year === currentYear
-        ).length
-      ),
       icon: <Users className="w-4 h-4" />,
     },
     {
       id: 'personal',
-      label: '2. ค่าใช้จ่ายส่วนตัว',
+      label: '2. ส่วนตัว',
       shortLabel: 'ส่วนตัว',
-      badge: String(
-        personalExpenses.filter(
-          (e) => e.month === currentMonth && e.year === currentYear
-        ).length
-      ),
       icon: <User className="w-4 h-4" />,
     },
     {
       id: 'monthly',
-      label: '3. เรียกเก็บรายเดือน',
+      label: '3. รายเดือน',
       shortLabel: 'รายเดือน',
-      badge: String(monthlyBills.length),
       icon: <CheckSquare className="w-4 h-4" />,
     },
     {
       id: 'dashboard',
       label: '4. Dashboard',
-      shortLabel: 'Dashboard',
-      badge: 'สรุป',
+      shortLabel: 'สรุปยอด',
       icon: <BarChart3 className="w-4 h-4" />,
     },
   ];
 
+  const currentPeriodLabel = `เดือน${
+    THAI_MONTHS.find((m) => m.value === currentMonth)?.label
+  } ${currentYear + 543}`;
+
   return (
-    <div className="min-h-screen pb-16">
-      {/* Top Glassmorphic Navigation Header */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/75 border-b border-white/80 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+    <div className="min-h-screen pb-24 md:pb-14">
+      {/* Compact Sticky Top Header (Mobile-First) */}
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/85 border-b border-slate-200/80 shadow-2xs">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
           {/* Brand Logo */}
           <div
-            onClick={() => setActiveModule('shared')}
-            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => handleSelectModule('shared')}
+            className="flex items-center gap-2.5 cursor-pointer"
           >
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-blue-600/25">
-              <Heart className="w-5 h-5 fill-amber-300 text-amber-300" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-sm">
+              <Heart className="w-4 h-4 sm:w-5 sm:h-5 fill-amber-300 text-amber-300" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
-                  Together<span className="text-blue-600">Pay</span>
-                </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                  เนิร์ส & พี
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1.5">
-                <Database className="w-3 h-3 text-blue-600" />
-                Firebase: togetherpay-5c73f
-                {isConnected && (
-                  <span className="inline-flex items-center gap-1 text-emerald-600 font-bold">
-                    • <Cloud className="w-3 h-3" /> Live Sync
-                  </span>
-                )}
-              </p>
+              <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 leading-none">
+                Together<span className="text-blue-600">Pay</span>
+              </h1>
+              <span className="text-[10px] font-bold text-slate-500">
+                เนิร์ส & พี • Live Sync
+              </span>
             </div>
           </div>
 
           {/* Desktop Navigation Pills */}
-          <nav className="hidden md:flex items-center gap-1.5 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80">
+          <nav className="hidden md:flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200">
             {navItems.map((item) => {
               const active = activeModule === item.id;
               return (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setActiveModule(item.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs lg:text-sm font-extrabold transition-all cursor-pointer ${
+                  onClick={() => handleSelectModule(item.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs lg:text-sm font-extrabold transition-all cursor-pointer ${
                     active
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {item.icon}
                   <span>{item.label}</span>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                      active
-                        ? 'bg-amber-400 text-slate-950'
-                        : 'bg-slate-200/80 text-slate-700'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
                 </button>
               );
             })}
           </nav>
-        </div>
 
-        {/* Mobile Navigation Bar */}
-        <div className="md:hidden px-3 pb-3 flex items-center gap-1.5 overflow-x-auto">
-          {navItems.map((item) => {
-            const active = activeModule === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveModule(item.id)}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer ${
-                  active
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-white/80 text-slate-600 border border-slate-200/70'
-                }`}
-              >
-                {item.icon}
-                <span>{item.shortLabel}</span>
-              </button>
-            );
-          })}
+          {/* Quick Action Buttons in Top Right: เคลียร์เงิน & AI API Key */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setIsSettleModalOpen(true)}
+              className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+            >
+              <HandCoins className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span>เคลียร์เงิน</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsAiModalOpen(true)}
+              className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs flex items-center gap-1 shadow-2xs transition cursor-pointer"
+              title="ตั้งค่า AI API Key และวิเคราะห์ค่าใช้จ่าย"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>AI</span>
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Main Content Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      {/* Main Content Container — Directly shows the selected module without Hero clutter */}
+      <main className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-4 sm:pt-6">
         {syncError && (
-          <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-medium">
-            ⚠️ สถานะการเชื่อมต่อฐานข้อมูล: {syncError}
+          <div className="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-medium">
+            ⚠️ สถานะฐานข้อมูล: {syncError}
           </div>
         )}
 
-        {/* Bento Grid Hero Showcase */}
-        <BentoHero
-          coupleSummary={currentMonthAnalytics.coupleSummary}
-          activeModule={activeModule}
-          onSelectModule={setActiveModule}
-          currentMonth={currentMonth}
-          currentYear={currentYear}
-          totalItemsCount={sharedExpenses.length + personalExpenses.length}
-        />
-
-        {/* Active Module Content */}
         {activeModule === 'shared' && (
           <ModuleSharedExpenses
             expenses={sharedExpenses}
+            settlements={settlements}
+            coupleSummary={currentMonthAnalytics.coupleSummary}
             onAddExpense={handleAddSharedExpense}
             onDeleteExpense={handleDeleteSharedExpense}
+            onOpenSettleModal={() => setIsSettleModalOpen(true)}
           />
         )}
 
@@ -381,10 +403,65 @@ export function App() {
             personalExpenses={personalExpenses}
             monthlyBills={monthlyBills}
             monthlyPayments={monthlyPayments}
+            settlements={settlements}
+            hasApiKey={Boolean(geminiApiKey)}
+            onOpenSettleModal={() => setIsSettleModalOpen(true)}
+            onOpenAiModal={() => setIsAiModalOpen(true)}
           />
         )}
       </main>
+
+      {/* Fixed Mobile Bottom Navigation Bar (Thumb-Friendly Native App Feel) */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200/90 px-2 py-1.5 shadow-[0_-8px_25px_-8px_rgba(15,23,42,0.1)]">
+        <div className="grid grid-cols-4 gap-1 max-w-md mx-auto">
+          {navItems.map((item) => {
+            const active = activeModule === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleSelectModule(item.id)}
+                className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all cursor-pointer ${
+                  active
+                    ? 'bg-slate-900 text-amber-300 font-extrabold shadow-xs'
+                    : 'text-slate-500 font-bold hover:text-slate-900'
+                }`}
+              >
+                {item.icon}
+                <span className="text-[11px] mt-0.5 leading-tight">
+                  {item.shortLabel}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Settle Up Modal (เคลียร์ค่าใช้จ่ายระหว่างกัน) */}
+      <SettleUpModal
+        isOpen={isSettleModalOpen}
+        onClose={() => setIsSettleModalOpen(false)}
+        coupleSummary={currentMonthAnalytics.coupleSummary}
+        settlements={settlements}
+        defaultMonth={currentMonth}
+        defaultYear={currentYear}
+        onAddSettlement={handleAddSettlement}
+        onDeleteSettlement={handleDeleteSettlement}
+      />
+
+      {/* AI Financial Advisor & Gemini API Key Modal */}
+      <AiAdvisorModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        apiKey={geminiApiKey}
+        onSaveApiKey={handleSaveApiKey}
+        periodLabel={currentPeriodLabel}
+        coupleSummary={currentMonthAnalytics.coupleSummary}
+        peeMetrics={currentMonthAnalytics.peeMetrics}
+        nurseMetrics={currentMonthAnalytics.nurseMetrics}
+      />
     </div>
   );
 }
+
 export default App;

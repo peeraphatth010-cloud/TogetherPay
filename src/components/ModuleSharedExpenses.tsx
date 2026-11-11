@@ -6,34 +6,46 @@ import {
   Trash2,
   Calendar,
   Filter,
-  Users,
   ArrowUpRight,
   ExternalLink,
   Check,
   Sparkles,
   RotateCcw,
+  HandCoins,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   CATEGORIES,
   ExpenseCategory,
   PERSON_INFO,
   PersonId,
+  SettlementRecord,
   SharedExpense,
   SplitType,
   THAI_MONTHS,
 } from '../types';
-import { calculateSharedItemBreakdown, formatCurrency } from '../utils/calculations';
+import {
+  CoupleSettlementSummary,
+  calculateSharedItemBreakdown,
+  formatCurrency,
+} from '../utils/calculations';
 
 interface ModuleSharedExpensesProps {
   expenses: SharedExpense[];
+  settlements: SettlementRecord[];
+  coupleSummary: CoupleSettlementSummary;
   onAddExpense: (data: Omit<SharedExpense, 'id' | 'createdAt'>) => Promise<void>;
   onDeleteExpense: (id: string) => Promise<void>;
+  onOpenSettleModal: () => void;
 }
 
 export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
   expenses,
+  settlements,
+  coupleSummary,
   onAddExpense,
   onDeleteExpense,
+  onOpenSettleModal,
 }) => {
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
@@ -139,7 +151,6 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
           : {}),
       });
 
-      // Reset form and sync filter to the added expense's month/year
       setAmount('');
       setTitle('');
       setLocationName('');
@@ -151,12 +162,14 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
     }
   };
 
-  // Filtered expenses by selected month & year
   const filteredExpenses = expenses.filter(
     (item) => item.month === filterMonth && item.year === filterYear
   );
 
-  // Live preview of current form split
+  const filteredSettlements = settlements.filter(
+    (s) => s.month === filterMonth && s.year === filterYear
+  );
+
   const previewAmount = parseFloat(amount) || 0;
   const previewBreakdown = calculateSharedItemBreakdown({
     id: 'preview',
@@ -171,8 +184,8 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
     createdAt: Date.now(),
   });
 
-  // Monthly summary for filtered list
-  const monthlySummary = filteredExpenses.reduce(
+  // Filtered monthly summary including settlements
+  const monthlyRaw = filteredExpenses.reduce(
     (acc, item) => {
       const b = calculateSharedItemBreakdown(item);
       acc.total += item.amount;
@@ -185,39 +198,59 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
     { total: 0, peePaid: 0, nursePaid: 0, peeAdv: 0, nurseAdv: 0 }
   );
 
+  const nurseSettledMonth = filteredSettlements
+    .filter((s) => s.fromPerson === 'nurse' && s.toPerson === 'pee')
+    .reduce((sum, s) => sum + s.amount, 0);
+  const peeSettledMonth = filteredSettlements
+    .filter((s) => s.fromPerson === 'pee' && s.toPerson === 'nurse')
+    .reduce((sum, s) => sum + s.amount, 0);
+
+  const remainingPeeAdv = Math.max(0, monthlyRaw.peeAdv - nurseSettledMonth);
+  const remainingNurseAdv = Math.max(0, monthlyRaw.nurseAdv - peeSettledMonth);
+
   const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i);
 
   return (
-    <div className="space-y-6">
-      {/* Top Filter Bar: Month & Year (Defaults to Current Month & Year) */}
-      <div className="bento-card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-600/20">
-            <Users className="w-6 h-6" />
-          </div>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Compact Mobile-First Sun-Yellow Settlement & Filter Banner */}
+      <div className="bento-yellow-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center justify-between sm:justify-start gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-extrabold text-slate-900">
-                โมดูล 1 : บันทึกค่าใช้จ่าย (ร่วมกัน)
-              </h2>
-              <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-800">
-                ร่วมกัน
-              </span>
-            </div>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              บันทึกมื้ออาหาร ทริป หรือค่าใช้จ่ายที่เนิร์สและพีออกให้กันหรือหารกัน
-            </p>
+            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-slate-900/10 text-slate-900">
+              โมดูล 1 • บันทึกค่าใช้จ่าย (ร่วมกัน)
+            </span>
+            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 mt-1">
+              {coupleSummary.netDirection === 'settled' ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-800" />
+                  เคลียร์ยอดกันเรียบร้อย (฿0)
+                </span>
+              ) : coupleSummary.netDirection === 'nurse_pays_pee' ? (
+                <>👩‍💼 เนิร์ส ต้องโอนคืน 👨‍💻 พี ฿{formatCurrency(coupleSummary.netAmount)}</>
+              ) : (
+                <>👨‍💻 พี ต้องโอนคืน 👩‍💼 เนิร์ส ฿{formatCurrency(coupleSummary.netAmount)}</>
+              )}
+            </h2>
           </div>
+
+          <button
+            type="button"
+            onClick={onOpenSettleModal}
+            className="sm:hidden shrink-0 px-3.5 py-2.5 rounded-2xl bg-slate-900 text-amber-300 font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
+          >
+            <HandCoins className="w-4 h-4" />
+            เคลียร์เงิน
+          </button>
         </div>
 
-        {/* Month & Year Filter Controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-1.5 bg-slate-100/90 px-3 py-2 rounded-2xl border border-slate-200/80">
-            <Filter className="w-4 h-4 text-blue-600" />
+        {/* Filter Month / Year + Desktop Settle Button */}
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2">
+          <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-slate-900/10">
+            <Filter className="w-3.5 h-3.5 text-slate-700" />
             <select
               value={filterMonth}
               onChange={(e) => setFilterMonth(Number(e.target.value))}
-              className="bg-transparent text-sm font-bold text-slate-800 focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs sm:text-sm font-extrabold text-slate-900 focus:outline-none cursor-pointer"
             >
               {THAI_MONTHS.map((m) => (
                 <option key={m.value} value={m.value}>
@@ -227,16 +260,16 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
             </select>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-100/90 px-3 py-2 rounded-2xl border border-slate-200/80">
-            <Calendar className="w-4 h-4 text-blue-600" />
+          <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-slate-900/10">
+            <Calendar className="w-3.5 h-3.5 text-slate-700" />
             <select
               value={filterYear}
               onChange={(e) => setFilterYear(Number(e.target.value))}
-              className="bg-transparent text-sm font-bold text-slate-800 focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs sm:text-sm font-extrabold text-slate-900 focus:outline-none cursor-pointer"
             >
               {yearOptions.map((y) => (
                 <option key={y} value={y}>
-                  พ.ศ. {y + 543} ({y})
+                  พ.ศ. {y + 543}
                 </option>
               ))}
             </select>
@@ -249,37 +282,46 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                 setFilterMonth(currentMonth);
                 setFilterYear(currentYear);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold transition cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/90 text-slate-900 text-xs font-bold cursor-pointer"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              เดือนปัจจุบัน
+              <RotateCcw className="w-3 h-3" />
+              เดือนนี้
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={onOpenSettleModal}
+            className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-extrabold text-xs shadow-md transition cursor-pointer"
+          >
+            <HandCoins className="w-4 h-4" />
+            เคลียร์เงินคืนกัน
+          </button>
         </div>
       </div>
 
-      {/* Asymmetric 2-Column Bento Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (5 cols): Add Shared Expense Form */}
+      {/* Main 2-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Left Column (5 cols): Form */}
         <form
           onSubmit={handleSubmit}
-          className="lg:col-span-5 bento-card p-6 sm:p-7 space-y-5"
+          className="lg:col-span-5 bento-card p-5 sm:p-6 space-y-4"
         >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <h3 className="text-lg font-extrabold text-slate-900">
-                + เพิ่มรายการใช้จ่าย (ร่วมกัน)
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                + บันทึกค่าใช้จ่าย (ร่วมกัน)
               </h3>
-              <p className="text-xs text-slate-500">กรอกข้อมูลและเลือกวิธีหารเงิน</p>
+              <p className="text-xs text-slate-500">กรอกจำนวนเงิน เลือกคนออกและวิธีหาร</p>
             </div>
-            <span className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+            <span className="w-9 h-9 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-extrabold text-sm">
               ฿
             </span>
           </div>
 
           {/* 1. จำนวนเงิน (บาท) */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               จำนวนเงิน (บาท) *
             </label>
             <div className="relative">
@@ -292,20 +334,19 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-500/10 text-2xl font-extrabold text-slate-900 transition outline-none"
+                className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white text-2xl font-extrabold text-slate-900 outline-none"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
-                บาท (THB)
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                บาท
               </span>
             </div>
-            {/* Quick Amount Chips */}
             <div className="flex flex-wrap gap-1.5 mt-2">
-              {[100, 250, 500, 1000, 1500].map((val) => (
+              {[60, 100, 200, 500, 1000].map((val) => (
                 <button
                   key={val}
                   type="button"
                   onClick={() => setAmount(String(val))}
-                  className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 transition cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 transition cursor-pointer"
                 >
                   +{val}฿
                 </button>
@@ -314,39 +355,39 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
           </div>
 
           {/* 2. รายการ ชื่อ & วันที่ */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
                 ชื่อรายการ *
               </label>
               <input
                 type="text"
                 required
-                placeholder="เช่น กินชาบู, เติมน้ำมัน, ค่าโรงแรม"
+                placeholder="เช่น กินหมูกระทะ, เติมน้ำมัน, ค่าที่พัก"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white text-sm font-semibold text-slate-900 outline-none transition"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white text-sm font-semibold text-slate-900 outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
                 วันที่
               </label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white text-xs font-bold text-slate-800 outline-none transition"
+                className="w-full px-3 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 outline-none"
               />
             </div>
           </div>
 
-          {/* 3. ปุ่มเลือกหมวด (น้ำมัน, อาหาร, ที่พัก, ช้อปปิ้ง, ท่องเที่ยว) */}
+          {/* 3. ปุ่มเลือกหมวด */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
               เลือกหมวดหมู่
             </label>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-1.5">
               {CATEGORIES.map((cat) => {
                 const isSelected = category === cat.id;
                 return (
@@ -354,26 +395,26 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                     key={cat.id}
                     type="button"
                     onClick={() => setCategory(cat.id)}
-                    className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-2xl border text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex flex-col items-center justify-center py-2 px-1 rounded-2xl border text-[11px] font-bold transition cursor-pointer ${
                       isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/25 scale-[1.02]'
-                        : 'bg-slate-50/80 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-slate-50 text-slate-700 border-slate-200'
                     }`}
                   >
-                    <span className="text-lg mb-0.5">{cat.emoji}</span>
-                    <span>{cat.label}</span>
+                    <span className="text-base">{cat.emoji}</span>
+                    <span className="mt-0.5 truncate">{cat.label}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* 4. ใครเป็นคนออก (เนิร์ส, พี) */}
+          {/* 4. ใครเป็นคนออก */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              ใครเป็นคนออกเงินก่อน? (เนิร์ส / พี)
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              ใครเป็นคนออกเงิน?
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               {(['nurse', 'pee'] as PersonId[]).map((personKey) => {
                 const p = PERSON_INFO[personKey];
                 const active = payer === personKey;
@@ -382,16 +423,16 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                     key={personKey}
                     type="button"
                     onClick={() => setPayer(personKey)}
-                    className={`flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl border font-bold text-sm transition-all cursor-pointer ${
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border font-bold text-xs sm:text-sm transition cursor-pointer ${
                       active
                         ? personKey === 'nurse'
-                          ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-600/20'
-                          : 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
+                          : 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-slate-50 text-slate-700 border-slate-200'
                     }`}
                   >
-                    <span className="text-lg">{p.avatar}</span>
-                    <span>{p.name} เป็นคนออก</span>
+                    <span>{p.avatar}</span>
+                    <span>{p.name} ออกเงิน</span>
                     {active && <Check className="w-4 h-4 ml-auto" />}
                   </button>
                 );
@@ -399,16 +440,16 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
             </div>
           </div>
 
-          {/* 5. การหารเงิน (หาร 2, เนิร์สคนเดียว, พีคนเดียว) */}
+          {/* 5. การหารเงิน */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
               การหารเงิน
             </label>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 gap-2">
               {[
-                { id: 'split_2' as SplitType, label: 'หาร 2 เท่ากัน', desc: '50% : 50%' },
-                { id: 'nurse_only' as SplitType, label: 'เนิร์สคนเดียว', desc: 'ของเนิร์ส 100%' },
-                { id: 'pee_only' as SplitType, label: 'พีคนเดียว', desc: 'ของพี 100%' },
+                { id: 'split_2' as SplitType, label: 'หาร 2', desc: 'คนละครึ่ง' },
+                { id: 'nurse_only' as SplitType, label: 'เนิร์สคนเดียว', desc: 'เนิร์ส 100%' },
+                { id: 'pee_only' as SplitType, label: 'พีคนเดียว', desc: 'พี 100%' },
               ].map((opt) => {
                 const active = splitType === opt.id;
                 return (
@@ -416,67 +457,66 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                     key={opt.id}
                     type="button"
                     onClick={() => setSplitType(opt.id)}
-                    className={`py-2.5 px-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                    className={`py-2 px-2 rounded-2xl border text-center transition cursor-pointer ${
                       active
-                        ? 'bg-amber-400 text-slate-950 border-amber-500 font-extrabold shadow-sm'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 font-semibold hover:bg-slate-100'
+                        ? 'bg-amber-400 text-slate-950 border-amber-500 font-extrabold shadow-2xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 font-semibold'
                     }`}
                   >
-                    <div className="text-xs sm:text-sm">{opt.label}</div>
-                    <div className="text-[10px] opacity-75 mt-0.5">{opt.desc}</div>
+                    <div className="text-xs">{opt.label}</div>
+                    <div className="text-[10px] opacity-75">{opt.desc}</div>
                   </button>
                 );
               })}
             </div>
 
-            {/* Live Calculation Preview Pill */}
             {previewAmount > 0 && (
-              <div className="mt-3 p-3 rounded-2xl bg-blue-50/90 border border-blue-200/80 text-xs text-slate-700 flex items-center justify-between">
-                <span className="font-semibold">
-                  💡 พีรับผิดชอบ <b>฿{formatCurrency(previewBreakdown.peeResponsible)}</b> • เนิร์สรับผิดชอบ{' '}
+              <div className="mt-2.5 p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-[11px] text-slate-700 flex items-center justify-between">
+                <span>
+                  พี <b>฿{formatCurrency(previewBreakdown.peeResponsible)}</b> • เนิร์ส{' '}
                   <b>฿{formatCurrency(previewBreakdown.nurseResponsible)}</b>
                 </span>
                 <span className="font-extrabold text-blue-700">
                   {previewBreakdown.peeAdvancedForNurse > 0
-                    ? `พีออกแทนเนิร์ส ฿${formatCurrency(previewBreakdown.peeAdvancedForNurse)}`
+                    ? `พีออกให้เนิร์ส ฿${formatCurrency(previewBreakdown.peeAdvancedForNurse)}`
                     : previewBreakdown.nurseAdvancedForPee > 0
-                    ? `เนิร์สออกแทนพี ฿${formatCurrency(previewBreakdown.nurseAdvancedForPee)}`
+                    ? `เนิร์สออกให้พี ฿${formatCurrency(previewBreakdown.nurseAdvancedForPee)}`
                     : 'ไม่ต้องโอนคืน'}
                 </span>
               </div>
             )}
           </div>
 
-          {/* 6. สถานที่ (เปิด GPS ให้เชื่อมต่อได้ด้วย) */}
+          {/* 6. สถานที่ GPS */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                สถานที่ (รองรับพิกัด GPS)
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-slate-700">
+                สถานที่ (เชื่อมต่อ GPS ได้)
               </label>
               <button
                 type="button"
                 onClick={handleConnectGPS}
                 disabled={isLocating}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-full transition cursor-pointer"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full cursor-pointer"
               >
-                <Navigation className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
-                {isLocating ? 'กำลังดึงพิกัด GPS...' : 'ดึงพิกัด GPS ปัจจุบัน'}
+                <Navigation className={`w-3 h-3 ${isLocating ? 'animate-spin' : ''}`} />
+                {isLocating ? 'กำลังดึงพิกัด...' : 'ดึงพิกัด GPS'}
               </button>
             </div>
             <div className="relative">
               <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="พิมพ์ชื่อร้าน / สถานที่ หรือกดปุ่มดึงพิกัด GPS ด้านบน"
+                placeholder="ชื่อร้าน / สถานที่ หรือกดดึงพิกัด GPS"
                 value={locationName}
                 onChange={(e) => setLocationName(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-600 focus:bg-white text-sm font-medium text-slate-900 outline-none transition"
+                className="w-full pl-9 pr-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-medium text-slate-900 outline-none"
               />
             </div>
             {locationCoords && (
-              <div className="mt-1.5 flex items-center justify-between text-[11px] text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+              <div className="mt-1.5 flex items-center justify-between text-[11px] text-emerald-700 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
                 <span>
-                  📍 เชื่อมต่อพิกัด GPS แล้ว ({locationCoords.lat}, {locationCoords.lng})
+                  📍 ({locationCoords.lat}, {locationCoords.lng})
                 </span>
                 <a
                   href={`https://www.google.com/maps?q=${locationCoords.lat},${locationCoords.lng}`}
@@ -484,98 +524,91 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                   rel="noreferrer"
                   className="underline font-bold inline-flex items-center gap-0.5"
                 >
-                  ดูแผนที่ <ExternalLink className="w-3 h-3" />
+                  แผนที่ <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
             )}
             {locationError && (
-              <p className="mt-1.5 text-xs text-rose-600 font-medium">{locationError}</p>
+              <p className="mt-1 text-[11px] text-rose-600 font-medium">{locationError}</p>
             )}
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-4 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-extrabold text-sm shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
+            className="w-full py-3.5 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
           >
             <Plus className="w-5 h-5" />
-            {isSubmitting ? 'กำลังบันทึกข้อมูล...' : 'บันทึกค่าใช้จ่าย (ร่วมกัน)'}
+            {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกรายการ (ร่วมกัน)'}
           </button>
         </form>
 
-        {/* Right Column (7 cols): Monthly Summary & Shared Expenses List */}
-        <div className="lg:col-span-7 space-y-5">
-          {/* Mini Bento Summary Row for Selected Month */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bento-card p-5">
-              <p className="text-xs font-bold text-slate-500">ยอดใช้จ่ายร่วมกันเดือนนี้</p>
-              <p className="text-2xl font-extrabold text-slate-900 mt-1">
-                ฿{formatCurrency(monthlySummary.total)}
+        {/* Right Column (7 cols): Summary & Items */}
+        <div className="lg:col-span-7 space-y-4">
+          {/* 3 Compact Summary Boxes */}
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
+            <div className="bento-card p-3.5 sm:p-5">
+              <p className="text-[11px] font-bold text-slate-500">ใช้จ่ายร่วมเดือนนี้</p>
+              <p className="text-base sm:text-2xl font-extrabold text-slate-900 mt-0.5">
+                ฿{formatCurrency(monthlyRaw.total)}
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">
-                ทั้งหมด {filteredExpenses.length} รายการ
-              </p>
+              <p className="text-[10px] text-slate-400">{filteredExpenses.length} รายการ</p>
             </div>
 
-            <div className="bento-card p-5 border-l-4 border-l-blue-600">
-              <p className="text-xs font-bold text-blue-700">👨‍💻 พีออกแทนเนิร์ส (เดือนนี้)</p>
-              <p className="text-2xl font-extrabold text-slate-900 mt-1">
-                ฿{formatCurrency(monthlySummary.peeAdv)}
+            <div className="bento-card p-3.5 sm:p-5 border-l-4 border-l-blue-600">
+              <p className="text-[11px] font-bold text-blue-700">👨‍💻 พีออกให้เนิร์ส</p>
+              <p className="text-base sm:text-2xl font-extrabold text-slate-900 mt-0.5">
+                ฿{formatCurrency(remainingPeeAdv)}
               </p>
-              <p className="text-[11px] text-slate-500 mt-1">
-                พีจ่ายรวม ฿{formatCurrency(monthlySummary.peePaid)}
-              </p>
+              {nurseSettledMonth > 0 && (
+                <p className="text-[10px] text-emerald-600 font-bold">
+                  เคลียร์แล้ว ฿{formatCurrency(nurseSettledMonth)}
+                </p>
+              )}
             </div>
 
-            <div className="bento-card p-5 border-l-4 border-l-rose-500">
-              <p className="text-xs font-bold text-rose-700">👩‍💼 เนิร์สออกแทนพี (เดือนนี้)</p>
-              <p className="text-2xl font-extrabold text-slate-900 mt-1">
-                ฿{formatCurrency(monthlySummary.nurseAdv)}
+            <div className="bento-card p-3.5 sm:p-5 border-l-4 border-l-rose-500">
+              <p className="text-[11px] font-bold text-rose-700">👩‍💼 เนิร์สออกให้พี</p>
+              <p className="text-base sm:text-2xl font-extrabold text-slate-900 mt-0.5">
+                ฿{formatCurrency(remainingNurseAdv)}
               </p>
-              <p className="text-[11px] text-slate-500 mt-1">
-                เนิร์สจ่ายรวม ฿{formatCurrency(monthlySummary.nursePaid)}
-              </p>
+              {peeSettledMonth > 0 && (
+                <p className="text-[10px] text-emerald-600 font-bold">
+                  เคลียร์แล้ว ฿{formatCurrency(peeSettledMonth)}
+                </p>
+              )}
             </div>
           </div>
 
-          {/* List of Shared Expenses */}
-          <div className="bento-card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-900">
-                  รายการใช้จ่าย (ร่วมกัน) ประจำเดือน
-                  {THAI_MONTHS.find((m) => m.value === filterMonth)?.label} {filterYear + 543}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  แสดงรายการพร้อมคนออกเงิน การหาร และสถานที่ GPS
-                </p>
-              </div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700">
+          {/* Shared Expenses List */}
+          <div className="bento-card p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3.5">
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                รายการใช้จ่ายร่วมกัน • เดือน
+                {THAI_MONTHS.find((m) => m.value === filterMonth)?.label} {filterYear + 543}
+              </h3>
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700">
                 {filteredExpenses.length} รายการ
               </span>
             </div>
 
             {filteredExpenses.length === 0 ? (
-              <div className="text-center py-12 px-4 rounded-3xl bg-slate-50/70 border border-dashed border-slate-200">
-                <Sparkles className="w-10 h-10 text-blue-400 mx-auto mb-2" />
-                <p className="text-base font-bold text-slate-700">
+              <div className="text-center py-10 px-4 rounded-2xl bg-slate-50/70 border border-dashed border-slate-200">
+                <Sparkles className="w-8 h-8 text-blue-400 mx-auto mb-1.5" />
+                <p className="text-sm font-bold text-slate-700">
                   ยังไม่มีรายการค่าใช้จ่ายร่วมกันในเดือนนี้
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  กรอกข้อมูลฝั่งซ้ายเพื่อเริ่มบันทึกมื้ออาหาร ค่าน้ำมัน หรือทริปท่องเที่ยวได้เลย!
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {filteredExpenses.map((item) => {
                   const catObj =
                     CATEGORIES.find((c) => c.id === item.category) || CATEGORIES[0];
                   const payerInfo = PERSON_INFO[item.payer];
                   const breakdown = calculateSharedItemBreakdown(item);
-
                   const splitLabel =
                     item.splitType === 'split_2'
-                      ? 'หาร 2 เท่ากัน'
+                      ? 'หาร 2'
                       : item.splitType === 'nurse_only'
                       ? 'เนิร์สคนเดียว'
                       : 'พีคนเดียว';
@@ -583,42 +616,43 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                   return (
                     <div
                       key={item.id}
-                      className="p-4 rounded-2xl bg-slate-50/80 hover:bg-white border border-slate-200/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                      className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 flex items-center justify-between gap-2.5"
                     >
-                      <div className="flex items-start gap-3.5">
+                      <div className="flex items-start gap-3 min-w-0">
                         <div
-                          className={`w-12 h-12 rounded-2xl ${catObj.bgLight} ${catObj.textDark} border ${catObj.border} flex items-center justify-center text-xl shrink-0`}
+                          className={`w-10 h-10 rounded-2xl ${catObj.bgLight} ${catObj.textDark} border ${catObj.border} flex items-center justify-center text-lg shrink-0`}
                         >
                           {catObj.emoji}
                         </div>
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="font-bold text-slate-900 text-base">{item.title}</h4>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <h4 className="font-bold text-slate-900 text-sm truncate">
+                              {item.title}
+                            </h4>
                             <span
-                              className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${payerInfo.badgeBg} ${payerInfo.badgeText}`}
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${payerInfo.badgeBg} ${payerInfo.badgeText}`}
                             >
-                              {payerInfo.avatar} {payerInfo.name}ออกเงิน
+                              {payerInfo.name}ออก
                             </span>
-                            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
                               {splitLabel}
                             </span>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1">
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 mt-0.5">
                             <span>📅 {item.date}</span>
-                            <span>• หมวด{item.category}</span>
                             {item.locationName && (
-                              <span className="inline-flex items-center gap-1 text-blue-600 font-medium">
-                                <MapPin className="w-3.5 h-3.5" />
+                              <span className="inline-flex items-center gap-0.5 text-blue-600 font-medium truncate max-w-[180px]">
+                                <MapPin className="w-3 h-3 shrink-0" />
                                 {item.locationLat && item.locationLng ? (
                                   <a
                                     href={`https://www.google.com/maps?q=${item.locationLat},${item.locationLng}`}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="hover:underline inline-flex items-center gap-0.5"
+                                    className="hover:underline inline-flex items-center gap-0.5 truncate"
                                   >
                                     {item.locationName}
-                                    <ArrowUpRight className="w-3 h-3" />
+                                    <ArrowUpRight className="w-3 h-3 shrink-0" />
                                   </a>
                                 ) : (
                                   item.locationName
@@ -627,31 +661,29 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                             )}
                           </div>
 
-                          <div className="mt-1.5 text-[11px] font-semibold text-slate-600">
+                          <div className="mt-1 text-[11px] font-bold">
                             {breakdown.peeAdvancedForNurse > 0 ? (
                               <span className="text-blue-700">
-                                👉 พีออกแทนเนิร์ส ฿{formatCurrency(breakdown.peeAdvancedForNurse)}
+                                พีออกแทนเนิร์ส ฿{formatCurrency(breakdown.peeAdvancedForNurse)}
                               </span>
                             ) : breakdown.nurseAdvancedForPee > 0 ? (
                               <span className="text-rose-600">
-                                👉 เนิร์สออกแทนพี ฿{formatCurrency(breakdown.nurseAdvancedForPee)}
+                                เนิร์สออกแทนพี ฿{formatCurrency(breakdown.nurseAdvancedForPee)}
                               </span>
                             ) : (
-                              <span className="text-slate-500">
-                                👉 ออกให้ตัวเอง ไม่มียอดค้างกันในรายการนี้
-                              </span>
+                              <span className="text-slate-400">ออกให้ตัวเอง</span>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
+                      <div className="flex items-center gap-2 shrink-0">
                         <div className="text-right">
-                          <p className="text-lg font-extrabold text-slate-900">
+                          <p className="text-base font-extrabold text-slate-900">
                             ฿{formatCurrency(item.amount)}
                           </p>
                           {item.splitType === 'split_2' && (
-                            <p className="text-[11px] text-slate-500">
+                            <p className="text-[10px] text-slate-500">
                               คนละ ฿{formatCurrency(item.amount / 2)}
                             </p>
                           )}
@@ -659,10 +691,9 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                         <button
                           type="button"
                           onClick={() => onDeleteExpense(item.id)}
-                          title="ลบรายการ"
-                          className="w-9 h-9 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white flex items-center justify-center transition cursor-pointer"
+                          className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white flex items-center justify-center cursor-pointer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>

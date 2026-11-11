@@ -69,6 +69,19 @@ export interface MonthlyBillPayment {
   updatedAt: number;
 }
 
+export interface SettlementRecord {
+  id: string;
+  fromPerson: PersonId; // คนโอนคืน (เช่น nurse)
+  toPerson: PersonId; // คนรับเงินคืน (เช่น pee)
+  amount: number;
+  date: string; // YYYY-MM-DD
+  month: number;
+  year: number;
+  note?: string;
+  slipUrl?: string;
+  createdAt: number;
+}
+
 export const CATEGORIES: {
   id: ExpenseCategory;
   label: string;

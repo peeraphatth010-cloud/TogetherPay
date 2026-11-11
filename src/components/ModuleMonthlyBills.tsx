@@ -12,6 +12,8 @@ import {
   X,
   Edit3,
   Sparkles,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   CATEGORIES,
@@ -51,6 +53,7 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
   const [selectedPersonFilter, setSelectedPersonFilter] = useState<'all' | PersonId>('all');
   const [checklistMonth, setChecklistMonth] = useState<number>(currentMonth);
   const [checklistYear, setChecklistYear] = useState<number>(currentYear);
+  const [showCreateFormMobile, setShowCreateFormMobile] = useState<boolean>(false);
 
   // Add Bill Form States
   const [owner, setOwner] = useState<PersonId>('pee');
@@ -65,7 +68,7 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
   const [customPartnerShare, setCustomPartnerShare] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Editing monthly actual amount modal/inline state
+  // Editing monthly actual amount inline state
   const [editingBillId, setEditingBillId] = useState<string | null>(null);
   const [tempActualTotal, setTempActualTotal] = useState<string>('');
   const [tempPartnerShare, setTempPartnerShare] = useState<string>('');
@@ -107,6 +110,7 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
       setTitle('');
       setMinAmount('');
       setCustomPartnerShare('');
+      setShowCreateFormMobile(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -114,12 +118,10 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
 
   const activeYearMonth = formatYearMonth(checklistYear, checklistMonth);
 
-  // Filter bills active in the selected month & matching person filter
   const activeBills = bills.filter((b) => {
     if (!isBillActiveInYearMonth(b, activeYearMonth)) return false;
     if (selectedPersonFilter === 'all') return true;
     if (b.owner === selectedPersonFilter) return true;
-    // If shared with partner, also show when partner is selected
     if (b.splitWithPartner) return true;
     return false;
   });
@@ -242,36 +244,53 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
   const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - 1 + i);
 
   return (
-    <div className="space-y-6">
-      {/* Top Bar */}
-      <div className="bento-card p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20">
-            <CheckSquare className="w-6 h-6" />
+    <div className="space-y-4 sm:space-y-6">
+      {/* Compact Header Bar */}
+      <div className="bento-card p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shrink-0">
+              <CheckSquare className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-xl font-extrabold text-slate-900">
+                โมดูล 3 : บิลเรียกเก็บรายเดือน
+              </h2>
+              <p className="text-xs text-slate-500">
+                เช็คลิสต์จ่ายบิล แชร์ค่าห้อง และแนบสลิปโอนเงิน
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">
-              โมดูล 3 : ค่าใช้จ่าย เรียกเก็บรายเดือน (Checklist & สลิปโอนเงิน)
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              ตั้งค่าบิลรายเดือน กำหนดเดือนเริ่มต้น-สิ้นสุด แชร์ค่าห้อง/ค่าน้ำ/ค่าไฟ และแนบสลิปเมื่อจ่ายเสร็จสิ้น
-            </p>
-          </div>
+
+          {/* Mobile Toggle to open Create Bill Form */}
+          <button
+            type="button"
+            onClick={() => setShowCreateFormMobile((prev) => !prev)}
+            className="lg:hidden px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-extrabold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            เพิ่มบิล
+            {showCreateFormMobile ? (
+              <ChevronUp className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" />
+            )}
+          </button>
         </div>
 
         {/* Person Filter & Month/Year Selector */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200">
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2">
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200">
             {[
               { id: 'all', label: 'ทั้งหมด' },
-              { id: 'pee', label: '👨‍💻 ของพี' },
-              { id: 'nurse', label: '👩‍💼 ของเนิร์ส' },
+              { id: 'pee', label: '👨‍💻 พี' },
+              { id: 'nurse', label: '👩‍💼 เนิร์ส' },
             ].map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setSelectedPersonFilter(tab.id as 'all' | PersonId)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   selectedPersonFilter === tab.id
                     ? 'bg-slate-900 text-white shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -282,23 +301,23 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
             ))}
           </div>
 
-          <div className="flex items-center gap-1.5 bg-emerald-50 px-3 py-2 rounded-2xl border border-emerald-200">
-            <Calendar className="w-4 h-4 text-emerald-700" />
+          <div className="flex items-center gap-1 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-200">
+            <Calendar className="w-3.5 h-3.5 text-emerald-700" />
             <select
               value={checklistMonth}
               onChange={(e) => setChecklistMonth(Number(e.target.value))}
-              className="bg-transparent text-xs sm:text-sm font-bold text-emerald-950 outline-none cursor-pointer"
+              className="bg-transparent text-xs font-extrabold text-emerald-950 outline-none cursor-pointer"
             >
               {THAI_MONTHS.map((m) => (
                 <option key={m.value} value={m.value}>
-                  เช็คลิสต์เดือน{m.label}
+                  {m.label}
                 </option>
               ))}
             </select>
             <select
               value={checklistYear}
               onChange={(e) => setChecklistYear(Number(e.target.value))}
-              className="bg-transparent text-xs sm:text-sm font-bold text-emerald-950 outline-none cursor-pointer"
+              className="bg-transparent text-xs font-extrabold text-emerald-950 outline-none cursor-pointer"
             >
               {yearOptions.map((y) => (
                 <option key={y} value={y}>
@@ -310,28 +329,32 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
         </div>
       </div>
 
-      {/* Asymmetric 2-Column Bento Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (5 cols): Create Monthly Bill Form */}
+      {/* Main 2-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Left Column (5 cols): Create Monthly Bill Form (Collapsible on Mobile so Checklist is immediately visible!) */}
         <form
           onSubmit={handleCreateBill}
-          className="lg:col-span-5 bento-card p-6 sm:p-7 space-y-5"
+          className={`lg:col-span-5 bento-card p-5 sm:p-6 space-y-4 ${
+            showCreateFormMobile ? 'block' : 'hidden lg:block'
+          }`}
         >
-          <div className="border-b border-slate-100 pb-4">
-            <h3 className="text-lg font-extrabold text-slate-900">
-              + เพิ่มค่าใช้จ่ายเรียกเก็บรายเดือน
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              ใส่ยอดขั้นต่ำไว้ก่อน สามารถปรับยอดจริงในแต่ละเดือนและแนบสลิปได้
-            </p>
+          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                + เพิ่มรายการเรียกเก็บรายเดือน
+              </h3>
+              <p className="text-xs text-slate-500">
+                ตั้งยอดขั้นต่ำและกำหนดเดือนเริ่มต้น-สิ้นสุด
+              </p>
+            </div>
           </div>
 
-          {/* 1. ของใคร (เนิร์ส, พี) */}
+          {/* 1. ของใคร */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              ใครเป็นเจ้าของบิลหลัก (เนิร์ส / พี)
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              ใครเป็นเจ้าของบิลหลัก
             </label>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-2">
               {(['pee', 'nurse'] as PersonId[]).map((pid) => {
                 const p = PERSON_INFO[pid];
                 const active = owner === pid;
@@ -340,12 +363,12 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                     key={pid}
                     type="button"
                     onClick={() => setOwner(pid)}
-                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border text-sm font-bold transition cursor-pointer ${
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border text-xs sm:text-sm font-bold transition cursor-pointer ${
                       active
                         ? pid === 'pee'
                           ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                           : 'bg-rose-500 text-white border-rose-500 shadow-sm'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        : 'bg-slate-50 text-slate-700 border-slate-200'
                     }`}
                   >
                     <span>{p.avatar}</span>
@@ -357,28 +380,28 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
           </div>
 
           {/* 2. ชื่อรายการ & หมวดหมู่ */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
                 ชื่อบิลรายเดือน *
               </label>
               <input
                 type="text"
                 required
-                placeholder="เช่น ค่าห้องคอนโด, ค่าไฟ+น้ำ, ค่าเน็ต"
+                placeholder="เช่น ค่าห้องคอนโด, ค่าไฟ, ค่าเน็ต"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:border-emerald-600 focus:bg-white text-sm font-semibold text-slate-900 outline-none"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-900 outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
                 หมวดหมู่
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-                className="w-full px-3 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 outline-none cursor-pointer"
+                className="w-full px-3 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-bold text-slate-800 outline-none"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -389,10 +412,10 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
             </div>
           </div>
 
-          {/* 3. ยอดขั้นต่ำต่อเดือน (บาท) */}
+          {/* 3. ยอดขั้นต่ำต่อเดือน */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              ยอดขั้นต่ำ / ยอดมาตรฐานต่อเดือน (บาท) *
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              ยอดขั้นต่ำ / มาตรฐานต่อเดือน (บาท) *
             </label>
             <input
               type="number"
@@ -403,27 +426,27 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
               placeholder="เช่น 6000"
               value={minAmount}
               onChange={(e) => setMinAmount(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:border-emerald-600 focus:bg-white text-xl font-extrabold text-slate-900 outline-none"
+              className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xl font-extrabold text-slate-900 outline-none"
             />
           </div>
 
           {/* 4. กำหนดช่วงเดือนเริ่มต้น ถึง เดือนสิ้นสุด */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                นับตั้งแต่เดือน *
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                ตั้งแต่เดือน *
               </label>
               <input
                 type="month"
                 required
                 value={startMonth}
                 onChange={(e) => setStartMonth(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-bold text-slate-800 outline-none"
+                className="w-full px-3 py-2 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                ถึงเดือนที่สิ้นสุด *
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                ถึงเดือนสิ้นสุด *
               </label>
               <input
                 type="month"
@@ -431,18 +454,18 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                 value={endMonth}
                 min={startMonth}
                 onChange={(e) => setEndMonth(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-bold text-slate-800 outline-none"
+                className="w-full px-3 py-2 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 outline-none"
               />
             </div>
           </div>
 
-          {/* 5. สร้างเพิ่มเรียกเก็บให้อีกฝ่ายไหม (แชร์กัน) */}
-          <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 space-y-3">
+          {/* 5. แชร์กับอีกฝ่ายไหม */}
+          <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 space-y-2.5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <Users className="w-4 h-4 text-amber-800" />
-                <span className="text-xs sm:text-sm font-extrabold text-slate-900">
-                  แชร์และสร้างเรียกเก็บให้อีกฝ่ายด้วยไหม?
+                <span className="text-xs font-extrabold text-slate-900">
+                  แชร์และเรียกเก็บอีกฝ่ายด้วยไหม?
                 </span>
               </div>
               <input
@@ -454,33 +477,27 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
             </div>
 
             {splitWithPartner && (
-              <div className="space-y-2 pt-2 border-t border-amber-200/70">
-                <p className="text-xs text-slate-700">
-                  เช่น {PERSON_INFO[owner].name} มีบิล ฿{formatCurrency(numericMinAmount || 6000)}{' '}
-                  แชร์กับ{PERSON_INFO[owner === 'pee' ? 'nurse' : 'pee'].name}:
-                </p>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="bg-white p-2.5 rounded-xl border border-amber-200">
-                    <span className="text-[11px] font-bold text-slate-500 block">
-                      ส่วนของ{PERSON_INFO[owner].name}
-                    </span>
-                    <span className="text-sm font-extrabold text-slate-900">
-                      ฿{formatCurrency(ownerShareNum)}
-                    </span>
-                  </div>
-                  <div className="bg-white p-2.5 rounded-xl border border-amber-200">
-                    <label className="text-[11px] font-bold text-blue-700 block">
-                      เรียกเก็บ{PERSON_INFO[owner === 'pee' ? 'nurse' : 'pee'].name} (ปรับได้)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder={String(numericMinAmount / 2 || 3000)}
-                      value={customPartnerShare}
-                      onChange={(e) => setCustomPartnerShare(e.target.value)}
-                      className="w-full text-sm font-extrabold text-blue-700 bg-transparent outline-none border-b border-blue-200 focus:border-blue-600"
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-amber-200/70">
+                <div className="bg-white p-2 rounded-xl border border-amber-200">
+                  <span className="text-[10px] font-bold text-slate-500 block">
+                    ส่วนของ{PERSON_INFO[owner].name}
+                  </span>
+                  <span className="text-sm font-extrabold text-slate-900">
+                    ฿{formatCurrency(ownerShareNum)}
+                  </span>
+                </div>
+                <div className="bg-white p-2 rounded-xl border border-amber-200">
+                  <label className="text-[10px] font-bold text-blue-700 block">
+                    เรียกเก็บ{PERSON_INFO[owner === 'pee' ? 'nurse' : 'pee'].name}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder={String(numericMinAmount / 2 || 3000)}
+                    value={customPartnerShare}
+                    onChange={(e) => setCustomPartnerShare(e.target.value)}
+                    className="w-full text-sm font-extrabold text-blue-700 bg-transparent outline-none border-b border-blue-200"
+                  />
                 </div>
               </div>
             )}
@@ -489,44 +506,48 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
+            className="w-full py-3.5 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow-lg flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
           >
             <Plus className="w-5 h-5" />
-            {isSubmitting ? 'กำลังสร้างรายการ...' : 'สร้างรายการเรียกเก็บรายเดือน'}
+            {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกรายการรายเดือน'}
           </button>
         </form>
 
-        {/* Right Column (7 cols): Monthly Checklist Cards + Slip Attachment */}
+        {/* Right Column (7 cols): Monthly Checklist Cards */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="bento-card p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+          <div className="bento-card p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2 mb-4">
               <div>
-                <h3 className="text-lg font-extrabold text-slate-900">
-                  เช็คลิสต์บิลประจำเดือน
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                  เช็คลิสต์บิลเดือน
                   {THAI_MONTHS.find((m) => m.value === checklistMonth)?.label}{' '}
                   {checklistYear + 543}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  ติ๊กจ่ายเงิน ปรับยอดจริงประจำเดือน และแนบสลิปโอนเงินได้ในแต่ละรายการ
+                  ติ๊กเมื่อจ่ายแล้ว ปรับยอดจริงประจำเดือน และแนบสลิปเงินได้
                 </p>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 self-start sm:self-auto">
-                {activeBills.length} บิลในเดือนนี้
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 shrink-0">
+                {activeBills.length} บิล
               </span>
             </div>
 
             {activeBills.length === 0 ? (
-              <div className="text-center py-12 px-4 rounded-3xl bg-slate-50/70 border border-dashed border-slate-200">
-                <Sparkles className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
-                <p className="text-base font-bold text-slate-700">
+              <div className="text-center py-10 px-4 rounded-2xl bg-slate-50/70 border border-dashed border-slate-200">
+                <Sparkles className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                <p className="text-sm font-bold text-slate-700">
                   ยังไม่มีบิลรายเดือนในงวด {activeYearMonth}
                 </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  เพิ่มบิลรายเดือนฝั่งซ้าย (เช่น ค่าห้อง 6,000 บาท แชร์คนละ 3,000 บาท) เพื่อเริ่มใช้งานเช็คลิสต์
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateFormMobile(true)}
+                  className="mt-3 lg:hidden inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold"
+                >
+                  <Plus className="w-4 h-4" /> กดเพื่อเพิ่มบิลรายเดือนแรก
+                </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3.5">
                 {activeBills.map((bill) => {
                   const payment = getBillPaymentState(bill);
                   const ownerInfo = PERSON_INFO[bill.owner];
@@ -540,54 +561,43 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                   return (
                     <div
                       key={bill.id}
-                      className={`p-5 rounded-3xl border transition-all ${
+                      className={`p-4 rounded-2xl border transition-all ${
                         allPaid
                           ? 'bg-emerald-50/40 border-emerald-200'
-                          : 'bg-slate-50/80 border-slate-200/90'
+                          : 'bg-slate-50/90 border-slate-200'
                       }`}
                     >
-                      {/* Bill Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-slate-200/70">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200/70">
                         <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="text-base font-extrabold text-slate-900">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <h4 className="text-sm sm:text-base font-extrabold text-slate-900">
                               {bill.title}
                             </h4>
                             <span
-                              className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${ownerInfo.badgeBg} ${ownerInfo.badgeText}`}
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ownerInfo.badgeBg} ${ownerInfo.badgeText}`}
                             >
-                              {ownerInfo.avatar} บิลของ{ownerInfo.name}
+                              {ownerInfo.name}
                             </span>
-                            {bill.splitWithPartner && (
-                              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                                แชร์กับ{partnerInfo.name}
-                              </span>
-                            )}
                             {allPaid ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-600 text-white">
-                                <CheckCircle2 className="w-3 h-3" /> จ่ายครบแล้ว
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+                                <CheckCircle2 className="w-3 h-3" /> จ่ายครบ
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500 text-white">
-                                <Clock className="w-3 h-3" /> รอชำระ
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                                <Clock className="w-3 h-3" /> รอจ่าย
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-slate-500 mt-1">
-                            📆 สัญญา/รอบบิล: {bill.startMonth} ถึง {bill.endMonth} • ยอดขั้นต่ำ ฿
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            📆 {bill.startMonth} ถึง {bill.endMonth} • ขั้นต่ำ ฿
                             {formatCurrency(bill.minAmount)}
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-2 self-end sm:self-center">
-                          <div className="text-right mr-1">
-                            <span className="text-[11px] font-semibold text-slate-500 block">
-                              ยอดเดือนนี้
-                            </span>
-                            <span className="text-lg font-extrabold text-slate-900">
-                              ฿{formatCurrency(payment.actualTotalAmount)}
-                            </span>
-                          </div>
+                        <div className="flex items-center justify-between sm:justify-end gap-2">
+                          <span className="text-base font-extrabold text-slate-900">
+                            ฿{formatCurrency(payment.actualTotalAmount)}
+                          </span>
                           <button
                             type="button"
                             onClick={() => {
@@ -599,29 +609,26 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                                 setTempPartnerShare(String(payment.partnerShareAmount));
                               }
                             }}
-                            title="แก้ไขยอดจริงของเดือนนี้"
-                            className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-blue-500 text-xs font-bold text-slate-700 inline-flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-[11px] font-bold text-slate-700 inline-flex items-center gap-1 cursor-pointer"
                           >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            ปรับยอดเดือนนี้
+                            <Edit3 className="w-3 h-3" />
+                            ปรับยอด
                           </button>
                           <button
                             type="button"
                             onClick={() => onDeleteBill(bill.id)}
-                            title="ลบบิลรายเดือนนี้"
-                            className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white flex items-center justify-center transition cursor-pointer"
+                            className="w-7 h-7 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
 
-                      {/* Inline Edit Actual Amount for This Month */}
                       {isEditing && (
-                        <div className="my-3 p-3.5 rounded-2xl bg-blue-50 border border-blue-200 flex flex-wrap items-end gap-3">
+                        <div className="my-3 p-3 rounded-2xl bg-blue-50 border border-blue-200 flex flex-wrap items-end gap-2.5">
                           <div>
-                            <label className="block text-[11px] font-bold text-blue-900 mb-1">
-                              ยอดรวมจริงเดือนนี้ (บาท)
+                            <label className="block text-[10px] font-bold text-blue-900 mb-1">
+                              ยอดรวมจริงเดือนนี้
                             </label>
                             <input
                               type="number"
@@ -634,45 +641,45 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                                   setTempPartnerShare(String(val / 2));
                                 }
                               }}
-                              className="px-3 py-1.5 rounded-xl bg-white border border-blue-300 text-sm font-bold text-slate-900 w-36"
+                              className="px-2.5 py-1.5 rounded-xl bg-white border border-blue-300 text-xs font-bold text-slate-900 w-28"
                             />
                           </div>
                           {bill.splitWithPartner && (
                             <div>
-                              <label className="block text-[11px] font-bold text-blue-900 mb-1">
-                                ยอดเรียกเก็บ{partnerInfo.name} (บาท)
+                              <label className="block text-[10px] font-bold text-blue-900 mb-1">
+                                เรียกเก็บ{partnerInfo.name}
                               </label>
                               <input
                                 type="number"
                                 step="0.01"
                                 value={tempPartnerShare}
                                 onChange={(e) => setTempPartnerShare(e.target.value)}
-                                className="px-3 py-1.5 rounded-xl bg-white border border-blue-300 text-sm font-bold text-slate-900 w-36"
+                                className="px-2.5 py-1.5 rounded-xl bg-white border border-blue-300 text-xs font-bold text-slate-900 w-28"
                               />
                             </div>
                           )}
                           <button
                             type="button"
                             onClick={() => handleSaveCustomMonthAmount(bill)}
-                            className="px-4 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 cursor-pointer"
+                            className="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold cursor-pointer"
                           >
-                            บันทึกยอดเดือนนี้
+                            บันทึก
                           </button>
                         </div>
                       )}
 
-                      {/* Checklist Items: Owner & Partner (if shared) */}
-                      <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* 1. Owner Checklist Card */}
+                      {/* Checklist Cards */}
+                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {/* Owner */}
                         <div
-                          className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 ${
+                          className={`p-3 rounded-2xl border flex flex-col justify-between gap-2 ${
                             payment.ownerPaid
-                              ? 'bg-white border-emerald-300 shadow-2xs'
+                              ? 'bg-white border-emerald-300'
                               : 'bg-white/80 border-slate-200'
                           }`}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                          <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2 cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={payment.ownerPaid}
@@ -697,19 +704,18 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                                   : 'bg-slate-100 text-slate-600'
                               }`}
                             >
-                              {payment.ownerPaid ? 'จ่ายแล้ว' : 'ยังไม่จ่าย'}
+                              {payment.ownerPaid ? 'จ่ายแล้ว' : 'รอจ่าย'}
                             </span>
                           </div>
 
-                          {/* Slip upload & preview for Owner */}
-                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                            <label className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-xl cursor-pointer transition">
-                              <Upload className="w-3.5 h-3.5" />
+                          <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                            <label className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-xl cursor-pointer">
+                              <Upload className="w-3 h-3" />
                               {uploadingSlipKey === `${bill.id}_owner`
-                                ? 'กำลังอัปโหลด...'
+                                ? 'อัปโหลด...'
                                 : payment.ownerSlipUrl
                                 ? 'เปลี่ยนสลิป'
-                                : 'แนบสลิปเงิน'}
+                                : 'แนบสลิป'}
                               <input
                                 type="file"
                                 accept="image/*"
@@ -719,7 +725,6 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                                 }
                               />
                             </label>
-
                             {payment.ownerSlipUrl && (
                               <button
                                 type="button"
@@ -730,26 +735,25 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                                     payerName: ownerInfo.name,
                                   })
                                 }
-                                className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl hover:bg-emerald-100 cursor-pointer"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl cursor-pointer"
                               >
-                                <ImageIcon className="w-3.5 h-3.5" />
-                                ดูสลิปที่แนบ
+                                <ImageIcon className="w-3 h-3" /> ดูสลิป
                               </button>
                             )}
                           </div>
                         </div>
 
-                        {/* 2. Partner Checklist Card (if shared) */}
+                        {/* Partner */}
                         {bill.splitWithPartner && (
                           <div
-                            className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 ${
+                            className={`p-3 rounded-2xl border flex flex-col justify-between gap-2 ${
                               payment.partnerPaid
-                                ? 'bg-white border-emerald-300 shadow-2xs'
+                                ? 'bg-white border-emerald-300'
                                 : 'bg-white/80 border-amber-200'
                             }`}
                           >
-                            <div className="flex items-start justify-between gap-2">
-                              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                            <div className="flex items-center justify-between">
+                              <label className="flex items-center gap-2 cursor-pointer">
                                 <input
                                   type="checkbox"
                                   checked={payment.partnerPaid}
@@ -760,7 +764,7 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                                 />
                                 <div>
                                   <span className="text-xs font-extrabold text-slate-900 block">
-                                    {partnerInfo.avatar} เรียกเก็บ{partnerInfo.name} (ส่วนที่หาร)
+                                    {partnerInfo.avatar} เรียกเก็บ{partnerInfo.name}
                                   </span>
                                   <span className="text-sm font-extrabold text-blue-700">
                                     ฿{formatCurrency(payment.partnerShareAmount)}
@@ -774,19 +778,18 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                                     : 'bg-amber-100 text-amber-800'
                                 }`}
                               >
-                                {payment.partnerPaid ? 'โอนแล้ว' : 'รอโอนคืน'}
+                                {payment.partnerPaid ? 'โอนแล้ว' : 'รอโอน'}
                               </span>
                             </div>
 
-                            {/* Slip upload & preview for Partner */}
-                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                              <label className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-xl cursor-pointer transition">
-                                <Upload className="w-3.5 h-3.5" />
+                            <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                              <label className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-xl cursor-pointer">
+                                <Upload className="w-3 h-3" />
                                 {uploadingSlipKey === `${bill.id}_partner`
-                                  ? 'กำลังอัปโหลด...'
+                                  ? 'อัปโหลด...'
                                   : payment.partnerSlipUrl
                                   ? 'เปลี่ยนสลิป'
-                                  : 'แนบสลิปโอนเงิน'}
+                                  : 'แนบสลิป'}
                                 <input
                                   type="file"
                                   accept="image/*"
@@ -796,7 +799,6 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                                   }
                                 />
                               </label>
-
                               {payment.partnerSlipUrl && (
                                 <button
                                   type="button"
@@ -807,10 +809,9 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                                       payerName: partnerInfo.name,
                                     })
                                   }
-                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl hover:bg-emerald-100 cursor-pointer"
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl cursor-pointer"
                                 >
-                                  <ImageIcon className="w-3.5 h-3.5" />
-                                  ดูสลิปที่แนบ
+                                  <ImageIcon className="w-3 h-3" /> ดูสลิป
                                 </button>
                               )}
                             </div>
@@ -826,38 +827,35 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
         </div>
       </div>
 
-      {/* Modal for Viewing Attached Payment Slip */}
       {previewSlip && (
         <div
           className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
           onClick={() => setPreviewSlip(null)}
         >
           <div
-            className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4"
+            className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-3"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <div>
-                <h4 className="font-extrabold text-slate-900 text-base">
-                  หลักฐานสลิปโอนเงิน • {previewSlip.payerName}
+                <h4 className="font-extrabold text-slate-900 text-sm">
+                  สลิปโอนเงิน • {previewSlip.payerName}
                 </h4>
                 <p className="text-xs text-slate-500">{previewSlip.title}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setPreviewSlip(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center cursor-pointer"
+                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 flex items-center justify-center max-h-[70vh]">
-              <img
-                src={previewSlip.url}
-                alt="Payment Slip"
-                className="max-h-[65vh] w-auto object-contain"
-              />
-            </div>
+            <img
+              src={previewSlip.url}
+              alt="Payment Slip"
+              className="max-h-[65vh] w-full object-contain rounded-2xl"
+            />
           </div>
         </div>
       )}
