@@ -9,9 +9,7 @@ import {
   History,
   CheckCircle2,
   MapPin,
-  Sparkles,
   HandCoins,
-  KeyRound,
   Wallet,
 } from 'lucide-react';
 import {
@@ -40,9 +38,7 @@ interface ModuleDashboardProps {
   monthlyBills: MonthlyBill[];
   monthlyPayments: MonthlyBillPayment[];
   settlements: SettlementRecord[];
-  hasApiKey: boolean;
   onOpenSettleModal: () => void;
-  onOpenAiModal: () => void;
 }
 
 export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
@@ -51,9 +47,7 @@ export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
   monthlyBills,
   monthlyPayments,
   settlements,
-  hasApiKey,
   onOpenSettleModal,
-  onOpenAiModal,
 }) => {
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
@@ -451,7 +445,7 @@ export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
 
     return (
       <div className="space-y-5">
-        {/* 5. Prominent Sun-Yellow Settlement Card + Electric Royal Blue AI Card */}
+        {/* Prominent Sun-Yellow Settlement Card + Royal Blue Balance Breakdown Card */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
           {/* Sun-Yellow Feature Card: สรุปว่าใครต้องโอนคืนใคร + ปุ่มเคลียร์เงิน */}
           <div className="lg:col-span-7 bento-yellow-card p-5 sm:p-6 flex flex-col justify-between gap-4">
@@ -512,47 +506,35 @@ export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
             </div>
           </div>
 
-          {/* Electric Royal Blue Gradient AI Card with API Key Settings Button */}
+          {/* Royal Blue Balance Breakdown Card */}
           <div className="lg:col-span-5 bento-royal-card p-5 sm:p-6 text-white flex flex-col justify-between gap-4">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center text-amber-300 shrink-0">
-                  <Sparkles className="w-5 h-5" />
-                </span>
-                <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-blue-200 block">
-                    Gemini AI Financial Advisor
-                  </span>
-                  <h4 className="text-base sm:text-lg font-extrabold text-white">
-                    AI วิเคราะห์การใช้จ่ายคู่รัก
-                  </h4>
-                </div>
-              </div>
-              <span
-                className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${
-                  hasApiKey
-                    ? 'bg-emerald-400/20 text-emerald-200 border border-emerald-400/40'
-                    : 'bg-amber-400 text-slate-950'
-                }`}
-              >
-                {hasApiKey ? 'เชื่อมต่อ Key แล้ว' : 'ยังไม่ได้ใส่ Key'}
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-200 block">
+                รายละเอียดยอดออกแทนกัน
               </span>
+              <h4 className="text-base sm:text-lg font-extrabold text-white mt-0.5">
+                สรุปยอดออกเงินให้กัน ({periodLabel})
+              </h4>
             </div>
 
-            <p className="text-xs text-blue-100 leading-relaxed">
-              ให้ AI ช่วยสรุปสัดส่วนค่าอาหาร น้ำมัน ที่พัก ช้อปปิ้ง และแนะนำการบริหารงบของเนิร์สและพีแบบเข้าใจง่าย
-            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white/10 rounded-2xl p-3 border border-white/15">
+                <span className="text-[11px] text-blue-100 block">👨‍💻 พีออกแทนเนิร์ส</span>
+                <span className="text-lg font-extrabold text-white">
+                  ฿{formatCurrency(coupleSummary.peeAdvancedForNurseTotal)}
+                </span>
+              </div>
+              <div className="bg-white/10 rounded-2xl p-3 border border-white/15">
+                <span className="text-[11px] text-blue-100 block">👩‍💼 เนิร์สออกแทนพี</span>
+                <span className="text-lg font-extrabold text-white">
+                  ฿{formatCurrency(coupleSummary.nurseAdvancedForPeeTotal)}
+                </span>
+              </div>
+            </div>
 
-            <button
-              type="button"
-              onClick={onOpenAiModal}
-              className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-blue-50 text-blue-900 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
-            >
-              <KeyRound className="w-4 h-4 text-blue-600" />
-              {hasApiKey
-                ? '✨ เปิด AI วิเคราะห์รายจ่าย / แก้ไข API Key'
-                : '🔑 ใส่ Gemini API Key และเริ่มวิเคราะห์ด้วย AI'}
-            </button>
+            <p className="text-[11px] text-blue-100">
+              คำนวณรวมจากรายการใช้จ่ายร่วมกันและบิลรายเดือนที่ตั้งแชร์กันอัตโนมัติ
+            </p>
           </div>
         </div>
 

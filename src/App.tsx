@@ -14,7 +14,6 @@ import {
   BarChart3,
   Heart,
   HandCoins,
-  Sparkles,
 } from 'lucide-react';
 import { db } from './firebase';
 import {
@@ -23,15 +22,13 @@ import {
   PersonalExpense,
   SettlementRecord,
   SharedExpense,
-  THAI_MONTHS,
 } from './types';
 import { computeDashboardAnalytics } from './utils/calculations';
-import { getSavedGeminiApiKey, saveGeminiApiKey } from './utils/aiAdvisor';
 import { ModuleSharedExpenses } from './components/ModuleSharedExpenses';
 import { ModulePersonalExpenses } from './components/ModulePersonalExpenses';
 import { ModuleMonthlyBills } from './components/ModuleMonthlyBills';
 import { ModuleDashboard } from './components/ModuleDashboard';
-import { SettleUpModal, AiAdvisorModal } from './components/Modals';
+import { SettleUpModal } from './components/Modals';
 
 function cleanFirestoreData<T extends Record<string, unknown>>(obj: T): T {
   const cleaned: Record<string, unknown> = {};
@@ -53,10 +50,8 @@ export function App() {
   const [monthlyBills, setMonthlyBills] = useState<MonthlyBill[]>([]);
   const [monthlyPayments, setMonthlyPayments] = useState<MonthlyBillPayment[]>([]);
   const [settlements, setSettlements] = useState<SettlementRecord[]>([]);
-  const [geminiApiKey, setGeminiApiKey] = useState<string>(getSavedGeminiApiKey);
 
   const [isSettleModalOpen, setIsSettleModalOpen] = useState<boolean>(false);
-  const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const now = new Date();
@@ -138,29 +133,12 @@ export function App() {
       (err) => console.error('Firestore settlements error:', err)
     );
 
-    const unsubSettings = onSnapshot(
-      doc(db, 'app_settings', 'gemini_config'),
-      (snap) => {
-        if (snap.exists()) {
-          const data = snap.data() as { apiKey?: string };
-          if (data.apiKey && !getSavedGeminiApiKey()) {
-            saveGeminiApiKey(data.apiKey);
-            setGeminiApiKey(data.apiKey);
-          }
-        }
-      },
-      () => {
-        // ignore if settings doc doesn't exist yet
-      }
-    );
-
     return () => {
       unsubShared();
       unsubPersonal();
       unsubBills();
       unsubPayments();
       unsubSettlements();
-      unsubSettings();
     };
   }, []);
 
@@ -232,17 +210,6 @@ export function App() {
     await deleteDoc(doc(db, 'settlements', id));
   };
 
-  const handleSaveApiKey = async (newKey: string, syncToCloud: boolean) => {
-    saveGeminiApiKey(newKey);
-    setGeminiApiKey(newKey);
-    if (syncToCloud) {
-      await setDoc(doc(db, 'app_settings', 'gemini_config'), {
-        apiKey: newKey,
-        updatedAt: Date.now(),
-      });
-    }
-  };
-
   // Current month analytics
   const currentMonthAnalytics = computeDashboardAnalytics({
     sharedExpenses,
@@ -286,10 +253,6 @@ export function App() {
       icon: <BarChart3 className="w-4 h-4" />,
     },
   ];
-
-  const currentPeriodLabel = `เดือน${
-    THAI_MONTHS.find((m) => m.value === currentMonth)?.label
-  } ${currentYear + 543}`;
 
   return (
     <div className="min-h-screen pb-24 md:pb-14">
@@ -336,31 +299,21 @@ export function App() {
             })}
           </nav>
 
-          {/* Quick Action Buttons in Top Right: เคลียร์เงิน & AI API Key */}
+          {/* Quick Action Button in Top Right: เคลียร์เงิน */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => setIsSettleModalOpen(true)}
-              className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
             >
-              <HandCoins className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <HandCoins className="w-4 h-4" />
               <span>เคลียร์เงิน</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsAiModalOpen(true)}
-              className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs flex items-center gap-1 shadow-2xs transition cursor-pointer"
-              title="ตั้งค่า AI API Key และวิเคราะห์ค่าใช้จ่าย"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>AI</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content Container — Directly shows the selected module without Hero clutter */}
+      {/* Main Content Container */}
       <main className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-4 sm:pt-6">
         {syncError && (
           <div className="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-medium">
@@ -404,14 +357,12 @@ export function App() {
             monthlyBills={monthlyBills}
             monthlyPayments={monthlyPayments}
             settlements={settlements}
-            hasApiKey={Boolean(geminiApiKey)}
             onOpenSettleModal={() => setIsSettleModalOpen(true)}
-            onOpenAiModal={() => setIsAiModalOpen(true)}
           />
         )}
       </main>
 
-      {/* Fixed Mobile Bottom Navigation Bar (Thumb-Friendly Native App Feel) */}
+      {/* Fixed Mobile Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200/90 px-2 py-1.5 shadow-[0_-8px_25px_-8px_rgba(15,23,42,0.1)]">
         <div className="grid grid-cols-4 gap-1 max-w-md mx-auto">
           {navItems.map((item) => {
@@ -447,18 +398,6 @@ export function App() {
         defaultYear={currentYear}
         onAddSettlement={handleAddSettlement}
         onDeleteSettlement={handleDeleteSettlement}
-      />
-
-      {/* AI Financial Advisor & Gemini API Key Modal */}
-      <AiAdvisorModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-        apiKey={geminiApiKey}
-        onSaveApiKey={handleSaveApiKey}
-        periodLabel={currentPeriodLabel}
-        coupleSummary={currentMonthAnalytics.coupleSummary}
-        peeMetrics={currentMonthAnalytics.peeMetrics}
-        nurseMetrics={currentMonthAnalytics.nurseMetrics}
       />
     </div>
   );
