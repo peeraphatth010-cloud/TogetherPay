@@ -6,7 +6,8 @@ export type ExpenseCategory =
   | 'อาหาร'
   | 'ที่พัก'
   | 'ช้อปปิ้ง'
-  | 'ท่องเที่ยว';
+  | 'ท่องเที่ยว'
+  | 'อื่นๆ';
 
 export type SplitType = 'split_2' | 'nurse_only' | 'pee_only';
 
@@ -19,7 +20,7 @@ export interface SharedExpense {
   splitType: SplitType;
   date: string; // Stored as YYYY-MM-DD
   month: number; // 1-12
-  year: number; // YYYY (AD internally for sorting, displayed as พ.ศ.)
+  year: number; // YYYY
   locationName?: string;
   locationLat?: number;
   locationLng?: number;
@@ -93,7 +94,7 @@ export interface CategoryMeta {
   border: string;
 }
 
-// หมวดหมู่สำหรับค่าใช้จ่ายทั่วไป (ร่วมกัน / ส่วนตัว)
+// หมวดหมู่สำหรับค่าใช้จ่ายทั่วไป (ร่วมกัน / ส่วนตัว) - 6 หมวดหมู่
 export const CATEGORIES: CategoryMeta[] = [
   {
     id: 'อาหาร',
@@ -140,9 +141,18 @@ export const CATEGORIES: CategoryMeta[] = [
     textDark: 'text-emerald-700',
     border: 'border-emerald-200',
   },
+  {
+    id: 'อื่นๆ',
+    label: 'อื่นๆ',
+    emoji: '✨',
+    color: '#64748B',
+    bgLight: 'bg-slate-100',
+    textDark: 'text-slate-700',
+    border: 'border-slate-300',
+  },
 ];
 
-// หมวดหมู่สำหรับเพิ่มรายการเรียกเก็บรายเดือน (เพิ่ม "ค่ารถ" และเอา "น้ำมัน" ออก)
+// หมวดหมู่สำหรับเพิ่มรายการเรียกเก็บรายเดือน (มี "ค่ารถ" และ "อื่นๆ", ไม่มี "น้ำมัน")
 export const MONTHLY_BILL_CATEGORIES: CategoryMeta[] = [
   {
     id: 'ที่พัก',
@@ -189,11 +199,20 @@ export const MONTHLY_BILL_CATEGORIES: CategoryMeta[] = [
     textDark: 'text-emerald-700',
     border: 'border-emerald-200',
   },
+  {
+    id: 'อื่นๆ',
+    label: 'อื่นๆ',
+    emoji: '✨',
+    color: '#64748B',
+    bgLight: 'bg-slate-100',
+    textDark: 'text-slate-700',
+    border: 'border-slate-300',
+  },
 ];
 
 // รวมทุกหมวดสำหรับแสดงผลใน Dashboard และกราฟ
 export const ALL_CATEGORIES: CategoryMeta[] = [
-  ...CATEGORIES,
+  ...CATEGORIES.filter((c) => c.id !== 'อื่นๆ'),
   {
     id: 'ค่ารถ',
     label: 'ค่ารถ',
@@ -202,6 +221,15 @@ export const ALL_CATEGORIES: CategoryMeta[] = [
     bgLight: 'bg-sky-50',
     textDark: 'text-sky-700',
     border: 'border-sky-200',
+  },
+  {
+    id: 'อื่นๆ',
+    label: 'อื่นๆ',
+    emoji: '✨',
+    color: '#64748B',
+    bgLight: 'bg-slate-100',
+    textDark: 'text-slate-700',
+    border: 'border-slate-300',
   },
 ];
 
@@ -222,9 +250,9 @@ export const PERSON_INFO: Record<
     name: 'เนิร์ส',
     fullLabel: 'เนิร์ส (Nurse)',
     avatar: '👩‍💼',
-    badgeBg: 'bg-rose-50 border-rose-200',
-    badgeText: 'text-rose-700',
-    accentColor: '#F43F5E',
+    badgeBg: 'bg-purple-50 border-purple-200',
+    badgeText: 'text-purple-700',
+    accentColor: '#9333EA',
   },
   pee: {
     id: 'pee',

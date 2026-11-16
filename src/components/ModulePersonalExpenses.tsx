@@ -115,8 +115,8 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
           <div
             className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl text-white flex items-center justify-center shadow-md shrink-0 ${
               selectedPerson === 'nurse'
-                ? 'bg-rose-500 shadow-rose-500/20'
-                : 'bg-blue-600 shadow-blue-600/20'
+                ? 'bg-purple-600 shadow-purple-600/25'
+                : 'bg-blue-600 shadow-blue-600/25'
             }`}
           >
             <User className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -142,10 +142,10 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
                   key={pid}
                   type="button"
                   onClick={() => setSelectedPerson(pid)}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isSelected
                       ? pid === 'nurse'
-                        ? 'bg-rose-500 text-white shadow-xs'
+                        ? 'bg-purple-600 text-white shadow-xs'
                         : 'bg-blue-600 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
@@ -174,7 +174,7 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
         <form
           onSubmit={handleSubmit}
           className={`lg:col-span-5 bento-card p-5 sm:p-6 space-y-4 transition-all ${
-            isFormHighlighted ? 'ring-4 ring-blue-500/30 scale-[1.01]' : ''
+            isFormHighlighted ? 'ring-4 ring-purple-500/30 scale-[1.01]' : ''
           }`}
         >
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -193,12 +193,12 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
             </div>
           </div>
 
-          {/* เลือกคนในฟอร์ม */}
+          {/* เลือกคนในฟอร์ม (ปุ่มใหญ่ + เนิร์สสีม่วง) */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label className="block text-sm font-extrabold text-slate-800 mb-2">
               บันทึกเป็นของใคร
             </label>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-3">
               {(['nurse', 'pee'] as PersonId[]).map((pid) => {
                 const p = PERSON_INFO[pid];
                 const active = selectedPerson === pid;
@@ -207,17 +207,23 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
                     key={pid}
                     type="button"
                     onClick={() => setSelectedPerson(pid)}
-                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border text-xs sm:text-sm font-bold transition cursor-pointer ${
+                    className={`relative flex flex-col items-center justify-center gap-1.5 py-4 px-3 rounded-3xl border-2 font-extrabold transition-all cursor-pointer ${
                       active
                         ? pid === 'nurse'
-                          ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
-                          : 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-600/30 scale-[1.02]'
+                          : 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/30 scale-[1.02]'
+                        : pid === 'nurse'
+                        ? 'bg-purple-50/50 text-purple-900 border-purple-200 hover:bg-purple-50'
+                        : 'bg-blue-50/50 text-blue-900 border-blue-200 hover:bg-blue-50'
                     }`}
                   >
-                    <span>{p.avatar}</span>
-                    <span>{p.name}</span>
-                    {active && <Check className="w-4 h-4 ml-auto" />}
+                    {active && (
+                      <span className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-white/25 flex items-center justify-center">
+                        <Check className="w-4 h-4 text-white" />
+                      </span>
+                    )}
+                    <span className="text-3xl leading-none">{p.avatar}</span>
+                    <span className="text-base sm:text-lg mt-0.5">ของ{p.name}</span>
                   </button>
                 );
               })}
@@ -280,12 +286,12 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
             />
           </div>
 
-          {/* ปุ่มเลือกหมวด */}
+          {/* ปุ่มเลือกหมวด (6 หมวด รวม อื่นๆ) */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 mb-2">
               เลือกหมวดหมู่
             </label>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {CATEGORIES.map((cat) => {
                 const isSelected = category === cat.id;
                 return (
@@ -293,16 +299,16 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
                     key={cat.id}
                     type="button"
                     onClick={() => setCategory(cat.id)}
-                    className={`flex flex-col items-center justify-center py-2 px-1 rounded-2xl border text-[11px] font-bold transition-all cursor-pointer ${
+                    className={`flex flex-col items-center justify-center py-3 px-2 rounded-2xl border text-xs font-bold transition-all cursor-pointer ${
                       isSelected
                         ? selectedPerson === 'nurse'
-                          ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
-                          : 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-600/20 scale-[1.02]'
+                          : 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20 scale-[1.02]'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className="text-base">{cat.emoji}</span>
-                    <span className="mt-0.5 truncate">{cat.label}</span>
+                    <span className="text-xl mb-0.5">{cat.emoji}</span>
+                    <span className="truncate">{cat.label}</span>
                   </button>
                 );
               })}
@@ -314,7 +320,7 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
             disabled={isSubmitting}
             className={`w-full py-3.5 px-5 rounded-2xl text-white font-extrabold text-sm shadow-lg flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 ${
               selectedPerson === 'nurse'
-                ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25'
+                ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-600/25'
                 : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/25'
             }`}
           >

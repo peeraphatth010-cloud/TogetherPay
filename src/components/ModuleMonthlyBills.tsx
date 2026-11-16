@@ -986,12 +986,12 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
               </button>
             </div>
 
-            {/* 1. ของใคร */}
+            {/* 1. ของใคร (ปุ่มใหญ่ + เนิร์สโทนสีม่วง) */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-sm font-extrabold text-slate-800 mb-2">
                 ส่วนของใคร
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 {(['pee', 'nurse'] as PersonId[]).map((pid) => {
                   const p = PERSON_INFO[pid];
                   const active = owner === pid;
@@ -1000,14 +1000,18 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                       key={pid}
                       type="button"
                       onClick={() => setOwner(pid)}
-                      className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border text-xs sm:text-sm font-bold transition cursor-pointer ${
+                      className={`flex flex-col items-center justify-center gap-1.5 py-4 px-3 rounded-3xl border-2 font-extrabold transition cursor-pointer ${
                         active
-                          ? 'bg-[#182238] text-white border-[#182238]'
-                          : 'bg-slate-50 text-slate-700 border-slate-200'
+                          ? pid === 'nurse'
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-600/25'
+                            : 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/25'
+                          : pid === 'nurse'
+                          ? 'bg-purple-50/50 text-purple-900 border-purple-200'
+                          : 'bg-blue-50/50 text-blue-900 border-blue-200'
                       }`}
                     >
-                      <span>{p.avatar}</span>
-                      <span>ส่วนของ{p.name}</span>
+                      <span className="text-3xl leading-none">{p.avatar}</span>
+                      <span className="text-base mt-0.5">ส่วนของ{p.name}</span>
                     </button>
                   );
                 })}
@@ -1029,12 +1033,12 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
               />
             </div>
 
-            {/* 3. หมวดหมู่รายเดือน (มี ค่ารถ, ไม่มี น้ำมัน) */}
+            {/* 3. หมวดหมู่รายเดือน (มี ค่ารถ และ อื่นๆ, ไม่มี น้ำมัน) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 หมวดหมู่
               </label>
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-3 gap-2">
                 {MONTHLY_BILL_CATEGORIES.map((cat) => {
                   const isSelected = category === cat.id;
                   return (
@@ -1042,13 +1046,13 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
                       key={cat.id}
                       type="button"
                       onClick={() => setCategory(cat.id)}
-                      className={`flex flex-col items-center justify-center py-2 px-1 rounded-2xl border text-[11px] font-bold transition cursor-pointer ${
+                      className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-2xl border text-xs font-bold transition cursor-pointer ${
                         isSelected
-                          ? 'bg-[#182238] text-white border-[#182238]'
+                          ? 'bg-[#182238] text-white border-[#182238] shadow-sm'
                           : 'bg-slate-50 text-slate-700 border-slate-200'
                       }`}
                     >
-                      <span className="text-base">{cat.emoji}</span>
+                      <span className="text-lg">{cat.emoji}</span>
                       <span className="mt-0.5 truncate">{cat.label}</span>
                     </button>
                   );

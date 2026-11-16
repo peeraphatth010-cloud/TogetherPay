@@ -560,8 +560,8 @@ export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
             </p>
           </div>
 
-          <div className="bento-card p-4 sm:p-5 border-t-4 border-t-rose-500">
-            <p className="text-[11px] sm:text-xs font-bold text-rose-700">3. ยอดที่เนิร์สจ่าย</p>
+          <div className="bento-card p-4 sm:p-5 border-t-4 border-t-purple-600">
+            <p className="text-[11px] sm:text-xs font-bold text-purple-700">3. ยอดที่เนิร์สจ่าย</p>
             <p className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
               ฿{formatCurrency(coupleSummary.nursePaidTotal)}
             </p>
@@ -581,7 +581,7 @@ export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
               </span>
             </div>
             <div className="mt-0.5 flex items-baseline justify-between">
-              <span className="text-xs font-bold text-rose-600">👩‍💼 เนิร์ส:</span>
+              <span className="text-xs font-bold text-purple-700">👩‍💼 เนิร์ส:</span>
               <span className="text-sm sm:text-base font-extrabold text-slate-900">
                 ฿{formatCurrency(coupleSummary.nurseResponsibleTotal)}
               </span>
@@ -607,8 +607,8 @@ export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
                 <span className="inline-flex items-center gap-1 text-blue-600">
                   <span className="w-2.5 h-2.5 rounded-full bg-blue-600" /> พี
                 </span>
-                <span className="inline-flex items-center gap-1 text-rose-500">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> เนิร์ส
+                <span className="inline-flex items-center gap-1 text-purple-600">
+                  <span className="w-2.5 h-2.5 rounded-full bg-purple-600" /> เนิร์ส
                 </span>
                 <span className="inline-flex items-center gap-1 text-amber-500">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-400" /> ร่วมกัน
@@ -640,7 +640,7 @@ export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
                         style={{ height: `${Math.max(m.peeTotal > 0 ? 6 : 2, peeH)}%` }}
                       />
                       <div
-                        className="w-1.5 sm:w-2 rounded-t-full bg-rose-500"
+                        className="w-1.5 sm:w-2 rounded-t-full bg-purple-600"
                         style={{ height: `${Math.max(m.nurseTotal > 0 ? 6 : 2, nurseH)}%` }}
                       />
                       <div
@@ -790,7 +790,7 @@ export const ModuleDashboard: React.FC<ModuleDashboardProps> = ({
             onClick={() => setActiveTab('nurse')}
             className={`py-2.5 px-2 rounded-2xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer ${
               activeTab === 'nurse'
-                ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
                 : 'bg-slate-100 text-slate-600'
             }`}
           >

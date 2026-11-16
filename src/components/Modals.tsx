@@ -187,7 +187,7 @@ export const SettleUpModal: React.FC<SettleUpModalProps> = ({
                 onClick={() => handleDirectionChange('nurse')}
                 className={`p-3 rounded-2xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                   fromPerson === 'nurse'
-                    ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
                     : 'bg-slate-50 text-slate-700 border-slate-200'
                 }`}
               >

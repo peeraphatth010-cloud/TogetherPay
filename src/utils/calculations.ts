@@ -171,6 +171,7 @@ export function computeDashboardAnalytics(params: {
     ที่พัก: 0,
     ช้อปปิ้ง: 0,
     ท่องเที่ยว: 0,
+    อื่นๆ: 0,
   };
 
   const peeCategoryMap: Record<ExpenseCategory, number> = {
@@ -180,6 +181,7 @@ export function computeDashboardAnalytics(params: {
     ที่พัก: 0,
     ช้อปปิ้ง: 0,
     ท่องเที่ยว: 0,
+    อื่นๆ: 0,
   };
 
   const nurseCategoryMap: Record<ExpenseCategory, number> = {
@@ -189,6 +191,7 @@ export function computeDashboardAnalytics(params: {
     ที่พัก: 0,
     ช้อปปิ้ง: 0,
     ท่องเที่ยว: 0,
+    อื่นๆ: 0,
   };
 
   for (const item of filteredShared) {

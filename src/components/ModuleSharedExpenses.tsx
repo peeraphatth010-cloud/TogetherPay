@@ -377,12 +377,12 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
             <ThaiDatePicker value={date} onChange={setDate} />
           </div>
 
-          {/* 4. ปุ่มเลือกหมวด */}
+          {/* 4. ปุ่มเลือกหมวด (รวมหมวด อื่นๆ) */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 mb-2">
               เลือกหมวดหมู่
             </label>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {CATEGORIES.map((cat) => {
                 const isSelected = category === cat.id;
                 return (
@@ -390,26 +390,26 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                     key={cat.id}
                     type="button"
                     onClick={() => setCategory(cat.id)}
-                    className={`flex flex-col items-center justify-center py-2 px-1 rounded-2xl border text-[11px] font-bold transition cursor-pointer ${
+                    className={`flex flex-col items-center justify-center py-3 px-2 rounded-2xl border text-xs font-bold transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-slate-50 text-slate-700 border-slate-200'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20 scale-[1.02]'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className="text-base">{cat.emoji}</span>
-                    <span className="mt-0.5 truncate">{cat.label}</span>
+                    <span className="text-xl mb-0.5">{cat.emoji}</span>
+                    <span className="truncate">{cat.label}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* 5. ใครเป็นคนออก */}
+          {/* 5. ใครเป็นคนออก (ขยายปุ่มให้ใหญ่ กดง่ายบนมือถือ + เนิร์สโทนสีม่วง) */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label className="block text-sm font-extrabold text-slate-800 mb-2">
               ใครเป็นคนออกเงิน?
             </label>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-3">
               {(['nurse', 'pee'] as PersonId[]).map((personKey) => {
                 const p = PERSON_INFO[personKey];
                 const active = payer === personKey;
@@ -418,17 +418,25 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                     key={personKey}
                     type="button"
                     onClick={() => setPayer(personKey)}
-                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border font-bold text-xs sm:text-sm transition cursor-pointer ${
+                    className={`relative flex flex-col items-center justify-center gap-1.5 py-4 sm:py-5 px-3 rounded-3xl border-2 font-extrabold transition-all cursor-pointer ${
                       active
                         ? personKey === 'nurse'
-                          ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
-                          : 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-slate-50 text-slate-700 border-slate-200'
+                          ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-600/30 scale-[1.02]'
+                          : 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/30 scale-[1.02]'
+                        : personKey === 'nurse'
+                        ? 'bg-purple-50/50 text-purple-900 border-purple-200 hover:bg-purple-50'
+                        : 'bg-blue-50/50 text-blue-900 border-blue-200 hover:bg-blue-50'
                     }`}
                   >
-                    <span>{p.avatar}</span>
-                    <span>{p.name} ออกเงิน</span>
-                    {active && <Check className="w-4 h-4 ml-auto" />}
+                    {active && (
+                      <span className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-white/25 flex items-center justify-center">
+                        <Check className="w-4 h-4 text-white" />
+                      </span>
+                    )}
+                    <span className="text-3xl leading-none">{p.avatar}</span>
+                    <span className="text-base sm:text-lg tracking-tight mt-0.5">
+                      {p.name} ออกเงิน
+                    </span>
                   </button>
                 );
               })}
@@ -562,8 +570,8 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
               )}
             </div>
 
-            <div className="bento-card p-3.5 sm:p-5 border-l-4 border-l-rose-500">
-              <p className="text-[11px] font-bold text-rose-700">👩‍💼 เนิร์สออกให้พี</p>
+            <div className="bento-card p-3.5 sm:p-5 border-l-4 border-l-purple-600">
+              <p className="text-[11px] font-bold text-purple-700">👩‍💼 เนิร์สออกให้พี</p>
               <p className="text-base sm:text-2xl font-extrabold text-slate-900 mt-0.5">
                 ฿{formatCurrency(remainingNurseAdv)}
               </p>
@@ -662,7 +670,7 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                                 พีออกแทนเนิร์ส ฿{formatCurrency(breakdown.peeAdvancedForNurse)}
                               </span>
                             ) : breakdown.nurseAdvancedForPee > 0 ? (
-                              <span className="text-rose-600">
+                              <span className="text-purple-700">
                                 เนิร์สออกแทนพี ฿{formatCurrency(breakdown.nurseAdvancedForPee)}
                               </span>
                             ) : (
