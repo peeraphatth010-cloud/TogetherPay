@@ -5,6 +5,7 @@ import {
   Upload,
   Image as ImageIcon,
   CheckCircle2,
+  Check,
   Users,
   X,
   Wallet,
@@ -52,7 +53,7 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
 
-  const [selectedPersonFilter, setSelectedPersonFilter] = useState<'all' | PersonId>('all');
+  const [selectedPersonFilter, setSelectedPersonFilter] = useState<PersonId>('pee');
   const [checklistMonth, setChecklistMonth] = useState<number>(currentMonth);
   const [checklistYear, setChecklistYear] = useState<number>(currentYear);
   const [showMonthFilterPicker, setShowMonthFilterPicker] = useState<boolean>(false);
@@ -102,7 +103,6 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
 
   const activeBills = bills.filter((b) => {
     if (!isBillActiveInYearMonth(b, activeYearMonth)) return false;
-    if (selectedPersonFilter === 'all') return true;
     if (b.owner === selectedPersonFilter) return true;
     if (b.splitWithPartner) return true;
     return false;
@@ -129,7 +129,7 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
     };
   };
 
-  // Calculate top summary totals for the dark navy card
+  // Calculate top summary totals for the selected person (ของเนิร์ส / ของพี)
   let totalMonthAmount = 0;
   let totalPaidAmount = 0;
   let totalPendingAmount = 0;
@@ -137,21 +137,16 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
 
   for (const bill of activeBills) {
     const p = getBillPaymentState(bill);
-    totalMonthAmount += p.actualTotalAmount;
+    const isOwner = bill.owner === selectedPersonFilter;
+    const myShareAmt = isOwner ? p.ownerShareAmount : p.partnerShareAmount;
+    const isMySharePaid = isOwner ? p.ownerPaid : p.partnerPaid;
 
-    const ownerPaidAmt = p.ownerPaid ? p.ownerShareAmount : 0;
-    const partnerPaidAmt =
-      bill.splitWithPartner && p.partnerPaid ? p.partnerShareAmount : 0;
-    const billPaidSum = ownerPaidAmt + partnerPaidAmt;
-
-    totalPaidAmount += billPaidSum;
-    totalPendingAmount += Math.max(0, p.actualTotalAmount - billPaidSum);
-
-    const isBillFullyPaid = bill.splitWithPartner
-      ? p.ownerPaid && p.partnerPaid
-      : p.ownerPaid;
-    if (isBillFullyPaid) {
+    totalMonthAmount += myShareAmt;
+    if (isMySharePaid) {
+      totalPaidAmount += myShareAmt;
       fullyPaidBillsCount += 1;
+    } else {
+      totalPendingAmount += myShareAmt;
     }
   }
 
@@ -190,9 +185,8 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
   const openBillModal = (bill: MonthlyBill, mode: 'pay' | 'edit' | 'detail') => {
     const p = getBillPaymentState(bill);
     setActivePaymentBill({ bill, mode });
-    // Default role: if owner not paid, select owner; else if split & partner not paid, select partner
     const defaultRole: 'owner' | 'partner' =
-      !p.ownerPaid || !bill.splitWithPartner ? 'owner' : 'partner';
+      bill.owner === selectedPersonFilter ? 'owner' : 'partner';
     setPayRole(defaultRole);
     setPayAmountInput(String(p.actualTotalAmount));
     setPayPartnerAmountInput(String(p.partnerShareAmount));
@@ -322,34 +316,48 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
           </button>
         </div>
 
-        {/* Person Filter Pills + Collapsible Month/Year Selector */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="inline-flex items-center gap-1 bg-white/90 p-1 rounded-2xl border border-slate-200/80 shadow-2xs">
-            {[
-              { id: 'all', label: 'ทั้งหมด' },
-              { id: 'pee', label: 'ส่วนของพี' },
-              { id: 'nurse', label: 'ส่วนของเนิร์ส' },
-            ].map((tab) => (
+        {/* Big 2-Button Person Selector (ของเนิร์ส / ของพี) matching Image 2 */}
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          {(['nurse', 'pee'] as PersonId[]).map((pid) => {
+            const p = PERSON_INFO[pid];
+            const active = selectedPersonFilter === pid;
+            return (
               <button
-                key={tab.id}
+                key={pid}
                 type="button"
-                onClick={() => setSelectedPersonFilter(tab.id as 'all' | PersonId)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${
-                  selectedPersonFilter === tab.id
-                    ? 'bg-[#182238] text-white'
-                    : 'text-slate-600 hover:text-slate-900'
+                onClick={() => {
+                  setSelectedPersonFilter(pid);
+                  setOwner(pid);
+                }}
+                className={`relative flex flex-col items-center justify-center gap-1.5 py-4 sm:py-5 px-3 rounded-3xl border-2 font-extrabold transition-all cursor-pointer ${
+                  active
+                    ? pid === 'nurse'
+                      ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-600/30 scale-[1.02]'
+                      : 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/30 scale-[1.02]'
+                    : pid === 'nurse'
+                    ? 'bg-white text-purple-900 border-purple-200 hover:bg-purple-50/50'
+                    : 'bg-white text-blue-900 border-blue-200 hover:bg-blue-50/50'
                 }`}
               >
-                {tab.label}
+                {active && (
+                  <span className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-white/25 flex items-center justify-center">
+                    <Check className="w-4 h-4 text-white" />
+                  </span>
+                )}
+                <span className="text-3xl leading-none">{p.avatar}</span>
+                <span className="text-base sm:text-lg mt-0.5">ของ{p.name}</span>
               </button>
-            ))}
-          </div>
+            );
+          })}
+        </div>
 
-          <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-2xl border border-slate-200/80 shadow-2xs">
+        {/* Month/Year Pill */}
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-1.5 bg-white px-3.5 py-2 rounded-2xl border border-slate-200/80 shadow-2xs">
             <select
               value={checklistMonth}
               onChange={(e) => setChecklistMonth(Number(e.target.value))}
-              className="bg-transparent text-xs font-extrabold text-slate-800 outline-none cursor-pointer"
+              className="bg-transparent text-xs sm:text-sm font-extrabold text-slate-800 outline-none cursor-pointer"
             >
               {THAI_MONTHS.map((m) => (
                 <option key={m.value} value={m.value}>
@@ -360,11 +368,11 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
             <select
               value={checklistYear}
               onChange={(e) => setChecklistYear(Number(e.target.value))}
-              className="bg-transparent text-xs font-extrabold text-slate-800 outline-none cursor-pointer"
+              className="bg-transparent text-xs sm:text-sm font-extrabold text-slate-800 outline-none cursor-pointer"
             >
               {yearOptions.map((y) => (
                 <option key={y} value={y}>
-                  {y + 543}
+                  พ.ศ. {y + 543}
                 </option>
               ))}
             </select>
