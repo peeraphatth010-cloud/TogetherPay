@@ -1,6 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
-  User,
   Plus,
   Trash2,
   Calendar,
@@ -48,22 +47,11 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
   const [filterYear, setFilterYear] = useState<number>(currentYear);
 
   // Form states
-  const [isFormHighlighted, setIsFormHighlighted] = useState<boolean>(false);
   const [date, setDate] = useState<string>(getTodayISOString);
   const [amount, setAmount] = useState<string>('');
   const [title, setTitle] = useState<string>('');
   const [category, setCategory] = useState<ExpenseCategory>('อาหาร');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-  const amountInputRef = useRef<HTMLInputElement>(null);
-
-  const handleStartAddExpense = () => {
-    const todayStr = getTodayISOString();
-    setDate(todayStr);
-    setIsFormHighlighted(true);
-    setTimeout(() => setIsFormHighlighted(false), 1200);
-    amountInputRef.current?.focus();
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,73 +97,12 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header Bar with Person Switcher & "+ เพิ่มค่าใช้จ่าย" Button */}
-      <div className="bento-card p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl text-white flex items-center justify-center shadow-md shrink-0 ${
-              selectedPerson === 'nurse'
-                ? 'bg-purple-600 shadow-purple-600/25'
-                : 'bg-blue-600 shadow-blue-600/25'
-            }`}
-          >
-            <User className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-          <div>
-            <h2 className="text-base sm:text-xl font-extrabold text-slate-900">
-              ค่าใช้จ่ายส่วนตัว ({activePersonInfo.name})
-            </h2>
-            <p className="text-xs text-slate-500">
-              บันทึกค่าใช้จ่ายเฉพาะของใครของมัน แยกกระเป๋าส่วนตัวชัดเจน
-            </p>
-          </div>
-        </div>
-
-        {/* Person Selector (เนิร์ส / พี) + ปุ่มเพิ่มค่าใช้จ่าย */}
-        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2">
-          <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200">
-            {(['nurse', 'pee'] as PersonId[]).map((pid) => {
-              const p = PERSON_INFO[pid];
-              const isSelected = selectedPerson === pid;
-              return (
-                <button
-                  key={pid}
-                  type="button"
-                  onClick={() => setSelectedPerson(pid)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                    isSelected
-                      ? pid === 'nurse'
-                        ? 'bg-purple-600 text-white shadow-xs'
-                        : 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <span>{p.avatar}</span>
-                  <span>ของ{p.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            type="button"
-            onClick={handleStartAddExpense}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs sm:text-sm shadow-sm transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            เพิ่มค่าใช้จ่าย (วันนี้)
-          </button>
-        </div>
-      </div>
-
       {/* Main 2-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left Column (5 cols): Form */}
         <form
           onSubmit={handleSubmit}
-          className={`lg:col-span-5 bento-card p-5 sm:p-6 space-y-4 transition-all ${
-            isFormHighlighted ? 'ring-4 ring-purple-500/30 scale-[1.01]' : ''
-          }`}
+          className="lg:col-span-5 bento-card p-5 sm:p-6 space-y-4"
         >
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
@@ -254,7 +181,6 @@ export const ModulePersonalExpenses: React.FC<ModulePersonalExpensesProps> = ({
             </label>
             <div className="relative">
               <input
-                ref={amountInputRef}
                 type="number"
                 inputMode="decimal"
                 step="0.01"
