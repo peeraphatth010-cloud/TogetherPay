@@ -450,9 +450,9 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
             </label>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { id: 'split_2' as SplitType, label: 'หาร 2', desc: 'คนละครึ่ง' },
-                { id: 'nurse_only' as SplitType, label: 'เนิร์สคนเดียว', desc: 'เนิร์ส 100%' },
-                { id: 'pee_only' as SplitType, label: 'พีคนเดียว', desc: 'พี 100%' },
+                { id: 'split_2' as SplitType, label: 'หาร 2' },
+                { id: 'nurse_only' as SplitType, label: 'เนิร์สคนเดียว' },
+                { id: 'pee_only' as SplitType, label: 'พีคนเดียว' },
               ].map((opt) => {
                 const active = splitType === opt.id;
                 return (
@@ -460,14 +460,13 @@ export const ModuleSharedExpenses: React.FC<ModuleSharedExpensesProps> = ({
                     key={opt.id}
                     type="button"
                     onClick={() => setSplitType(opt.id)}
-                    className={`py-2 px-2 rounded-2xl border text-center transition cursor-pointer ${
+                    className={`py-3 px-2 rounded-2xl border text-center transition cursor-pointer ${
                       active
                         ? 'bg-amber-400 text-slate-950 border-amber-500 font-extrabold shadow-2xs'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 font-semibold'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 font-bold hover:bg-slate-100'
                     }`}
                   >
-                    <div className="text-xs">{opt.label}</div>
-                    <div className="text-[10px] opacity-75">{opt.desc}</div>
+                    <div className="text-xs sm:text-sm">{opt.label}</div>
                   </button>
                 );
               })}
