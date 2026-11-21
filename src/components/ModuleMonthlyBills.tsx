@@ -16,6 +16,7 @@ import {
   ShoppingBag,
   Plane,
   Fuel,
+  Heart,
 } from 'lucide-react';
 import {
   MONTHLY_BILL_CATEGORIES,
@@ -42,6 +43,65 @@ interface ModuleMonthlyBillsProps {
   onUpsertPayment: (payment: Omit<MonthlyBillPayment, 'id' | 'updatedAt'>) => Promise<void>;
 }
 
+// วันเริ่มคบกัน: 26 ธันวาคม 2568 (ค.ศ. 2025)
+const ANNIVERSARY_START = { year: 2025, month: 12, day: 26 };
+
+function getRelationshipDuration(referenceDate: Date) {
+  const start = new Date(
+    ANNIVERSARY_START.year,
+    ANNIVERSARY_START.month - 1,
+    ANNIVERSARY_START.day
+  );
+  const today = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate()
+  );
+
+  const diffMs = today.getTime() - start.getTime();
+  if (diffMs <= 0) {
+    return {
+      years: 0,
+      months: 0,
+      days: 0,
+      totalDays: 0,
+      label: '0 วัน',
+      isExactAnniversary: false,
+    };
+  }
+
+  const totalDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  let years = today.getFullYear() - start.getFullYear();
+  let months = today.getMonth() - start.getMonth();
+  let days = today.getDate() - start.getDate();
+
+  if (days < 0) {
+    months -= 1;
+    const daysInPrevMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+    days += daysInPrevMonth;
+  }
+
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  const parts: string[] = [];
+  if (years > 0) parts.push(`${years} ปี`);
+  if (months > 0) parts.push(`${months} เดือน`);
+  if (days > 0 || parts.length === 0) parts.push(`${days} วัน`);
+
+  return {
+    years,
+    months,
+    days,
+    totalDays,
+    label: parts.join(' '),
+    isExactAnniversary: days === 0 && (months > 0 || years > 0),
+  };
+}
+
 export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
   bills,
   payments,
@@ -57,6 +117,9 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
   const [checklistMonth, setChecklistMonth] = useState<number>(currentMonth);
   const [checklistYear, setChecklistYear] = useState<number>(currentYear);
   const [showMonthFilterPicker, setShowMonthFilterPicker] = useState<boolean>(false);
+  const [showAnniversaryDetail, setShowAnniversaryDetail] = useState<boolean>(false);
+
+  const anniversary = getRelationshipDuration(now);
 
   // Modal: Create New Monthly Bill
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
@@ -297,13 +360,43 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
       {/* 1. Top Header: ค่าใช้จ่ายของฉัน + ปุ่มปฏิทินเลือกเดือน */}
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               ค่าใช้จ่ายของฉัน
             </h2>
             <p className="text-sm text-slate-500 mt-0.5">
               จัดการบิลและติดตามการชำระเงิน
             </p>
+            <button
+              type="button"
+              onClick={() => setShowAnniversaryDetail((prev) => !prev)}
+              className="mt-2 inline-flex flex-wrap items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-pink-50 via-purple-50 to-blue-50 border border-pink-200/80 text-xs font-semibold text-slate-700 shadow-2xs hover:border-pink-300 active:scale-[0.98] transition cursor-pointer text-left"
+              title="แตะเพื่อดูวันที่เริ่มคบกัน"
+            >
+              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0 animate-pulse" />
+              {anniversary.isExactAnniversary ? (
+                <span className="text-rose-600 font-bold">
+                  สุขสันต์วันครบรอบ {anniversary.label}! 🎉
+                </span>
+              ) : (
+                <span>
+                  คบกันมาแล้ว{' '}
+                  <span className="text-purple-700 font-bold">{anniversary.label}</span>
+                </span>
+              )}
+              {showAnniversaryDetail ? (
+                <span className="text-[11px] font-medium text-slate-500">
+                  • ตั้งแต่ 26 ธ.ค. 2568 ({anniversary.totalDays.toLocaleString('th-TH')} วัน)
+                </span>
+              ) : (
+                anniversary.totalDays > 0 &&
+                (anniversary.months > 0 || anniversary.years > 0) && (
+                  <span className="text-[11px] font-medium text-slate-400">
+                    ({anniversary.totalDays.toLocaleString('th-TH')} วัน)
+                  </span>
+                )
+              )}
+            </button>
           </div>
 
           <button
