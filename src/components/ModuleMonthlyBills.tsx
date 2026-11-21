@@ -17,6 +17,7 @@ import {
   Plane,
   Fuel,
   Heart,
+  Sparkles,
 } from 'lucide-react';
 import {
   MONTHLY_BILL_CATEGORIES,
@@ -67,6 +68,9 @@ function getRelationshipDuration(referenceDate: Date) {
       totalDays: 0,
       label: '0 วัน',
       isExactAnniversary: false,
+      daysUntilNext: 0,
+      nextMilestoneLabel: '1 เดือน',
+      monthProgressPct: 0,
     };
   }
 
@@ -92,13 +96,51 @@ function getRelationshipDuration(referenceDate: Date) {
   if (months > 0) parts.push(`${months} เดือน`);
   if (days > 0 || parts.length === 0) parts.push(`${days} วัน`);
 
+  // คำนวณนับถอยหลังสู่วันครบรอบครั้งถัดไป (ทุกวันที่ 26)
+  const nextDate =
+    today.getDate() < ANNIVERSARY_START.day
+      ? new Date(today.getFullYear(), today.getMonth(), ANNIVERSARY_START.day)
+      : new Date(today.getFullYear(), today.getMonth() + 1, ANNIVERSARY_START.day);
+
+  const prevDate = new Date(
+    nextDate.getFullYear(),
+    nextDate.getMonth() - 1,
+    ANNIVERSARY_START.day
+  );
+
+  const daysUntilNext = Math.max(
+    0,
+    Math.round((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  );
+  const cycleLength = Math.max(
+    1,
+    Math.round((nextDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24))
+  );
+  const isExactAnniversary = days === 0 && (months > 0 || years > 0);
+  const monthProgressPct = isExactAnniversary
+    ? 100
+    : Math.min(100, Math.max(5, Math.round(((cycleLength - daysUntilNext) / cycleLength) * 100)));
+
+  const nextTotalMonths =
+    (nextDate.getFullYear() - start.getFullYear()) * 12 +
+    (nextDate.getMonth() - start.getMonth());
+  let nextMilestoneLabel = `${nextTotalMonths} เดือน`;
+  if (nextTotalMonths > 0 && nextTotalMonths % 12 === 0) {
+    nextMilestoneLabel = `${nextTotalMonths / 12} ปี 🎂`;
+  } else if (nextTotalMonths > 12) {
+    nextMilestoneLabel = `${Math.floor(nextTotalMonths / 12)} ปี ${nextTotalMonths % 12} เดือน`;
+  }
+
   return {
     years,
     months,
     days,
     totalDays,
     label: parts.join(' '),
-    isExactAnniversary: days === 0 && (months > 0 || years > 0),
+    isExactAnniversary,
+    daysUntilNext,
+    nextMilestoneLabel,
+    monthProgressPct,
   };
 }
 
@@ -367,36 +409,6 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
             <p className="text-sm text-slate-500 mt-0.5">
               จัดการบิลและติดตามการชำระเงิน
             </p>
-            <button
-              type="button"
-              onClick={() => setShowAnniversaryDetail((prev) => !prev)}
-              className="mt-2 inline-flex flex-wrap items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-pink-50 via-purple-50 to-blue-50 border border-pink-200/80 text-xs font-semibold text-slate-700 shadow-2xs hover:border-pink-300 active:scale-[0.98] transition cursor-pointer text-left"
-              title="แตะเพื่อดูวันที่เริ่มคบกัน"
-            >
-              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0 animate-pulse" />
-              {anniversary.isExactAnniversary ? (
-                <span className="text-rose-600 font-bold">
-                  สุขสันต์วันครบรอบ {anniversary.label}! 🎉
-                </span>
-              ) : (
-                <span>
-                  คบกันมาแล้ว{' '}
-                  <span className="text-purple-700 font-bold">{anniversary.label}</span>
-                </span>
-              )}
-              {showAnniversaryDetail ? (
-                <span className="text-[11px] font-medium text-slate-500">
-                  • ตั้งแต่ 26 ธ.ค. 2568 ({anniversary.totalDays.toLocaleString('th-TH')} วัน)
-                </span>
-              ) : (
-                anniversary.totalDays > 0 &&
-                (anniversary.months > 0 || anniversary.years > 0) && (
-                  <span className="text-[11px] font-medium text-slate-400">
-                    ({anniversary.totalDays.toLocaleString('th-TH')} วัน)
-                  </span>
-                )
-              )}
-            </button>
           </div>
 
           <button
@@ -408,6 +420,81 @@ export const ModuleMonthlyBills: React.FC<ModuleMonthlyBillsProps> = ({
             <Calendar className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Relationship Anniversary Banner Card */}
+        <button
+          type="button"
+          onClick={() => setShowAnniversaryDetail((prev) => !prev)}
+          className="relative w-full overflow-hidden rounded-3xl bg-gradient-to-br from-rose-50 via-purple-50 to-blue-50 border border-pink-200/90 px-4 py-3.5 shadow-sm hover:shadow-md hover:border-pink-300 active:scale-[0.99] transition text-left cursor-pointer"
+          title="แตะเพื่อดูแถบความคืบหน้าวันครบรอบ"
+        >
+          {/* Decorative soft glow */}
+          <div className="pointer-events-none absolute -top-8 -right-8 w-28 h-28 rounded-full bg-pink-300/25 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-10 -left-6 w-28 h-28 rounded-full bg-purple-300/20 blur-2xl" />
+
+          <div className="relative flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 via-pink-500 to-purple-600 shadow-md shadow-rose-500/25 flex items-center justify-center shrink-0">
+                <Heart className="w-6 h-6 text-white fill-white animate-pulse" />
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600/90">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    {anniversary.isExactAnniversary
+                      ? 'สุขสันต์วันครบรอบ เนิร์ส 💕 พี'
+                      : 'เนิร์ส 💕 พี • คบกันมาแล้ว'}
+                  </span>
+                </div>
+
+                <div className="text-xl sm:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-rose-600 via-purple-600 to-blue-600 bg-clip-text text-transparent leading-tight mt-0.5">
+                  {anniversary.isExactAnniversary
+                    ? `ครบ ${anniversary.label}! 🎉`
+                    : anniversary.label}
+                </div>
+
+                <div className="text-[11px] font-medium text-slate-500 mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                  <span>ตั้งแต่ 26 ธ.ค. 2568</span>
+                  {anniversary.daysUntilNext > 0 && (
+                    <>
+                      <span className="text-pink-300">•</span>
+                      <span className="text-purple-600 font-semibold">
+                        อีก {anniversary.daysUntilNext} วัน ครบ {anniversary.nextMilestoneLabel}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {anniversary.totalDays > 0 && (
+              <div className="shrink-0 rounded-2xl bg-white/85 backdrop-blur-xs border border-pink-100 px-3 py-2 text-center shadow-2xs min-w-[66px]">
+                <div className="text-lg font-extrabold text-rose-600 leading-none">
+                  {anniversary.totalDays.toLocaleString('th-TH')}
+                </div>
+                <div className="text-[10px] font-semibold text-slate-500 mt-1">
+                  วันแล้ว
+                </div>
+              </div>
+            )}
+          </div>
+
+          {showAnniversaryDetail && (
+            <div className="relative mt-3 pt-2.5 border-t border-pink-200/60 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
+                <span>นับถอยหลังสู่ครบ {anniversary.nextMilestoneLabel}</span>
+                <span className="text-rose-600">{anniversary.monthProgressPct}%</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-white/90 overflow-hidden border border-pink-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-rose-500 via-purple-500 to-blue-500 transition-all duration-500"
+                  style={{ width: `${anniversary.monthProgressPct}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </button>
 
         {/* Big 2-Button Person Selector (ของเนิร์ส / ของพี) matching Image 2 */}
         <div className="grid grid-cols-2 gap-3 pt-1">
